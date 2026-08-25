@@ -1,101 +1,149 @@
 const axios = require("axios");
 
-const baseApiUrl = async () => {
-  const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/exe/main/baseApiUrl.json");
-  return base.data.mahmud;
-};
+async function toFont(text, id = 3) {
+  try {
+    const apiUrl = `https://xsaim8x-xxx-api.onrender.com/api/font?id=${id}&text=${encodeURIComponent(text)}`;
+    const { data } = await axios.get(apiUrl);
+    return data.output || text;
+  } catch (e) {
+    console.error("Font API error:", e.message);
+    return text;
+  }
+}
 
 module.exports = {
   config: {
-    name: "flaggame",
-    aliases: ["flag"],
-    version: "2.4.70",
-    author: "MahMUD",
+    name: "flagquiz",
+    aliases: ["flag", "fqz", "flagguess"],
+    version: "1.0",
+    author: "Saimx69x",
     countDown: 10,
     role: 0,
     category: "game",
     guide: {
-      en: "{pn}"
+      en: "{pn} — Flag guessing quiz"
     }
   },
-  
-  onReply: async function({ api, event, Reply, usersData }) {
-    const { flag, author } = Reply;
-    const getCoin = 500;
-    const getExp = 121;
-    const userData = await usersData.get(event.senderID);
-    
-    if (event.senderID !== author) {
-      return api.sendMessage("𝐓𝐡𝐢𝐬 𝐢𝐬 𝐧𝐨𝐭 𝐲𝐨𝐮𝐫 𝐟𝐥𝐚𝐠 𝐛𝐚𝐛𝐲 >🐸", event.threadID, event.messageID);
-    }
-    
-    const reply = event.body.toLowerCase();
-    await api.unsendMessage(Reply.messageID);
-    
-    if (reply === flag.toLowerCase()) {
-      userData.money += getCoin;
-      userData.exp += getExp;
-      await usersData.set(event.senderID, userData);
-      
-      api.sendMessage(
-        `🎉 | Correct answe baby.\nYou have earned ${getCoin} coins and ${getExp} exp.`,
-        event.threadID,
-        event.messageID
-      );
-    } else {
-      api.sendMessage(
-        `🥺 | Wrong Answer baby\nCorrect answer was: ${flag}`,
-        event.threadID,
-        event.messageID
-      );
-    }
-  },
-  
-  ST: async function({ api, event }) {
+
+  onStart: async function ({ api, event }) {
     try {
-      const apiUrl = await baseApiUrl();
-      const response = await axios.get(`${apiUrl}/api/flag`, {
-        responseType: "json",
-        headers: {
-          'User-Agent': 'Mozilla/5.0'
-        }
-      });
-      
-      const { link, country } = response.data;
-      
+      const apiUrl = "https://xsaim8x-xxx-api.onrender.com/api/flag";
+      const { data } = await axios.get(apiUrl);
+
+      const { image, options, answer } = data;
+
       const imageStream = await axios({
         method: "GET",
-        url: link,
-        responseType: "stream",
-        headers: {
-          'User-Agent': 'Mozilla/5.0'
-        }
+        url: image,
+        responseType: "stream"
       });
-      
+
+      const body = await toFont(`》 Flag Quiz 🚩
+━━━━━━━━━━━━━━
+📸 Guess the country of this flag!
+🅐 ${options.A}
+🅑 ${options.B}
+🅒 ${options.C}
+🅓 ${options.D}
+
+⏳ You have 1 minute 30 seconds!
+💡 You have 3 chances! Reply with A, B, C or D.`);
+
       api.sendMessage(
         {
-          body: "🌍 A random flag has appeared! Guess the flag name.",
+          body,
           attachment: imageStream.data
         },
         event.threadID,
-        (error, info) => {
+        async (err, info) => {
+          if (err) return;
+          
           global.GoatBot.onReply.set(info.messageID, {
-            commandName: module.exports.config.name,
+            commandName: this.config.name,
             type: "reply",
             messageID: info.messageID,
             author: event.senderID,
-            flag: country
+            correctAnswer: answer,
+            chances: 3,
+            answered: false
           });
-          
-          setTimeout(() => {
-            api.unsendMessage(info.messageID);
-          }, 40000);
+
+          setTimeout(async () => {
+            const quizData = global.GoatBot.onReply.get(info.messageID);
+            if (quizData && !quizData.answered) {
+              await api.unsendMessage(info.messageID);
+              const msg = await toFont(`⏰ Time's up!
+✅ The correct option was: ${answer}`);
+              api.sendMessage(msg, event.threadID);
+              global.GoatBot.onReply.delete(info.messageID);
+            }
+          }, 90000);
         },
         event.messageID
       );
-    } catch (error) {
-      console.error(`Error: ${error.message}`);
-      api.sendMessage(`Error fetching flag: ${error.message}`, event.threadID, event.messageID);
+    } catch (err) {
+      console.error(err);
+      const failMsg = await toFont("❌ Failed to fetch flag data.");
+      api.sendMessage(failMsg, event.threadID, event.messageID);
+    }
+  },
+
+  onReply: async function ({ api, event, Reply, usersData }) {
+    let { author, correctAnswer, messageID, chances } = Reply;
+    const reply = event.body?.trim().toUpperCase();
+
+    if (event.senderID !== author) {
+      const msg = await toFont("⚠️ This is not your quiz!");
+      return api.sendMessage(msg, event.threadID, event.messageID);
+    }
+
+    if (!reply || !["A", "B", "C", "D"].includes(reply)) {
+      const msg = await toFont("❌ Please reply with A, B, C or D.");
+      return api.sendMessage(msg, event.threadID, event.messageID);
+    }
+
+    if (reply === correctAnswer) {
+      await api.unsendMessage(messageID);
+
+      const rewardCoin = 300;
+      const rewardExp = 100;
+      const userData = await usersData.get(event.senderID);
+      userData.money += rewardCoin;
+      userData.exp += rewardExp;
+      await usersData.set(event.senderID, userData);
+
+      const correctMsg = await toFont(`🎉 Congratulations!
+
+✅ You answered correctly!
+💰 You earned ${rewardCoin} Coins
+🌟 You gained ${rewardExp} EXP
+
+🚩 You recognized the right flag, you are the true champion!`);
+
+      if (global.GoatBot.onReply.has(messageID)) {
+        global.GoatBot.onReply.get(messageID).answered = true;
+        global.GoatBot.onReply.delete(messageID);
+      }
+
+      return api.sendMessage(correctMsg, event.threadID, event.messageID);
+    } else {
+      chances--;
+
+      if (chances > 0) {
+        global.GoatBot.onReply.set(messageID, {
+          ...Reply,
+          chances
+        });
+
+        const wrongTryMsg = await toFont(`❌ Wrong answer!
+⏳ You still have ${chances} chance(s) left. Try again!`);
+        return api.sendMessage(wrongTryMsg, event.threadID, event.messageID);
+      } else {
+        await api.unsendMessage(messageID);
+        const wrongMsg = await toFont(`🥺 Out of chances!
+✅ The correct option was: ${correctAnswer}`);
+        return api.sendMessage(wrongMsg, event.threadID, event.messageID);
+      }
     }
   }
 };

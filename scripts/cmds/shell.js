@@ -1,66 +1,41 @@
-
 const { exec } = require('child_process');
-const fs = require('fs');
 
 module.exports = {
-	config: {
-		name: "shell",
-		aliases: ["sh", "terminal", "cmd"],
-		version: "1.0",
-		author: "ST | Sheikh Tamim",
-		countDown: 3,
-		role: 2, 
-		shortDescription: "Execute shell commands",
-		longDescription: "Execute shell/terminal commands like file operations, package installation, etc.\n\nBasic Usage Guide:\n• File Operations: ls, cat, touch, mkdir, rm\n• Package Install: npm install <package>\n• Create Files: echo 'content' > file.txt\n• View Files: cat filename.txt\n• Directory: cd, pwd, ls -la\n• System Info: whoami, date, uptime",
-		category: "owner",
-		guide: "{pn} <command>\nExamples:\n{pn} ls -la\n{pn} npm install axios\n{pn} touch newfile.txt\n{pn} echo 'Hello World' > test.txt\n{pn} cat package.json\n{pn} mkdir newfolder"
-	},
+  config: {
+    name: "shell",
+    version: "1.0",
+    author: "Samir",
+    countDown: 5,
+    role: 4,
+    shortDescription: "Execute shell commands",
+    longDescription: "",
+    category: "owner",
+    guide: {
+      vi: "{p}{n} <command>",
+      en: "{p}{n} <command>"
+    }
+  },
 
-	onStart: async function ({ message, args, event, api }) {
-		const { threadID, senderID, messageID } = event;
-		
-		
-		const botAdmins = global.GoatBot.config?.adminBot || [];
-		if (!botAdmins.includes(senderID)) {
-			return api.sendMessage("⛔ You are not authorized to use this command.", threadID, messageID);
-		}
+  onStart: async function ({ args, message }) {
+    const command = args.join(" ");
 
-		if (!args[0]) {
-			return api.sendMessage("⚠️ Please provide a shell command to execute.\nExample: /shell ls -la", threadID, messageID);
-		}
+    if (!command) {
+      return message.reply("Please provide a command to execute.");
+    }
 
-		const command = args.join(' ');
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error executing command: ${error}`);
+        return message.reply(`An error occurred while executing the command: ${error.message}`);
+      }
 
-		try {
-			exec(command, { timeout: 30000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
-				let response = '';
+      if (stderr) {
+        console.error(`Command execution resulted in an error: ${stderr}`);
+        return message.reply(`Command execution resulted in an error: ${stderr}`);
+      }
 
-				if (error) {
-					response = `❌ Command Failed\n📝 Command: \`${command}\`\n\n💥 Error:\n\`\`\`\n${error.message}\n\`\`\``;
-				} else {
-					response = `✅ Command Executed Successfully\n📝 Command: \`${command}\`\n\n`;
-					
-					if (stdout) {
-						response += `📤 Output:\n\`\`\`\n${stdout}\n\`\`\``;
-					}
-					if (stderr) {
-						response += `⚠️ Warning/Info:\n\`\`\`\n${stderr}\n\`\`\``;
-					}
-					if (!stdout && !stderr) {
-						response += `✨ Command executed successfully with no output.`;
-					}
-				}
-
-				// If response is too long, truncate it
-				if (response.length > 2000) {
-					response = response.substring(0, 1900) + "\n\n... (output truncated)";
-				}
-
-				api.sendMessage(response, threadID, messageID);
-			});
-
-		} catch (err) {
-			api.sendMessage(`❌ Failed to execute command: ${err.message}`, threadID, messageID);
-		}
-	}
+      console.log(`Command executed successfully:\n${stdout}`);
+      message.reply(`Command executed successfully:\n${stdout}`);
+    });
+  }
 };

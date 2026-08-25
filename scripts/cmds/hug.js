@@ -1,83 +1,71 @@
 const fs = require("fs-extra");
-const { createCanvas, loadImage } = require("canvas");
+const path = require("path");
+const axios = require("axios");
 
 module.exports = {
   config: {
     name: "hug",
-    version: "1.1.0",
-    author: "Rakib Adil",
+    version: "1.0",
+    author: "Saimx69x",
     countDown: 5,
     role: 0,
-    longDescription: "{p}hug @mention someone you want to hug that person 🫂",
-    category: "funny",
-    guide: "{p}hug and mention someone you want to hug 🥴",
-    usePrefix: true,// you can use this command without prefix, juat set it to false.
-    premium: false,
-    notes: "If you change the author then the command will not work and not usable"
+    description:
+      "🤗 Create a cute hug image between you and your tagged partner! Just tag or reply to someone 💞",
+    category: "love",
+    guide: {
+      en: "{pn} @tag or reply — Generate hug image 🤗"
+    }
   },
 
-  onStart: async function ({ api, message, event, usersData }) {
-    const config = module.exports.config;
-    const eAuth = "UmFraWIgQWRpbA==";
-    const dAuth = Buffer.from(eAuth, "base64").toString("utf8");
-    if (config.author !== dAuth) {
-      return message.reply("⚠️ Command author mismatch. Please restore original author name to use this command.");
+  langs: {
+    en: {
+      noTag: "Please tag someone or reply to their message to use this command 🤗",
+      fail: "❌ | Couldn't generate hug image, Please try again later."
     }
+  },
 
-    let one = event.senderID, two;
-    const mention = Object.keys(event.mentions);
-    
-    if(mention.length > 0){
-        two = mention[0];
-    }else if(event.type === "message_reply") {
-        two = event.messageReply.senderID;
-    }else{
-        message.reply("please mention or reply someone to hug")
-    };
+  onStart: async function ({ event, message, usersData, args, getLang }) {
+    const uid1 = event.senderID;
+    let uid2 = Object.keys(event.mentions || {})[0];
+    if (!uid2 && event.messageReply?.senderID) uid2 = event.messageReply.senderID;
+    if (!uid2) return message.reply(getLang("noTag"));
 
     try {
-      const avatarURL1 = await usersData.getAvatarUrl(one);
-      const avatarURL2 = await usersData.getAvatarUrl(two);
+      const [name1, name2] = await Promise.all([
+        usersData.getName(uid1).catch(() => "Unknown"),
+        usersData.getName(uid2).catch(() => "Unknown")
+      ]);
 
-      const canvas = createCanvas(800, 750);
-      const ctx = canvas.getContext("2d");
+      const [avatar1, avatar2] = await Promise.all([
+        usersData.getAvatarUrl(uid1),
+        usersData.getAvatarUrl(uid2)
+      ]);
 
-      const background = await loadImage("https://files.catbox.moe/qxovn9.jpg");
-      ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+      const GITHUB_RAW = "https://raw.githubusercontent.com/Saim-x69x/sakura/main/ApiUrl.json";
+      const rawRes = await axios.get(GITHUB_RAW);
+      const apiBase = rawRes.data.apiv1;
+      const apiURL = `${apiBase}/api/hug?boy=${encodeURIComponent(avatar1)}&girl=${encodeURIComponent(avatar2)}`;
 
-      const avatar1 = await loadImage(avatarURL1);
-      const avatar2 = await loadImage(avatarURL2);
+      const response = await axios.get(apiURL, { responseType: "arraybuffer" });
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(610, 340, 85, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(avatar1, 525, 255, 170, 170);
-      ctx.restore();
+      const savePath = path.join(__dirname, "tmp");
+      await fs.ensureDir(savePath);
+      const imgPath = path.join(savePath, `${uid1}_${uid2}_hug.jpg`);
+      await fs.writeFile(imgPath, response.data);
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(230, 350, 85, 0, Math.PI * 2); // Bigger & lower
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(avatar2, 145, 265, 170, 170);
-      ctx.restore();
+      const text = `🤗 ${name1} just hugged ${name2}! ❤️`;
+      await message.reply({
+        body: text,
+        attachment: fs.createReadStream(imgPath)
+      });
 
-      const outputPath = `${__dirname}/tmp/hug_image.png`;
-      const buffer = canvas.toBuffer("image/png");
-      fs.writeFileSync(outputPath, buffer);
+      setTimeout(() => {
+        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      }, 5000);
 
-      message.reply(
-        {
-          body: "🫂 A warm hug 💞",
-          attachment: fs.createReadStream(outputPath)
-        },
-        () => fs.unlinkSync(outputPath)
-      );
-    } catch (error) {
-      console.error(error.message);
-      api.sendMessage("⚠️ An error occurred, try again later.", event.threadID);
+    } catch (err) {
+      console.error("❌ Hug command error:", err);
+      return message.reply(getLang("fail"));
     }
   }
 };

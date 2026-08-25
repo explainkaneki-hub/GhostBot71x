@@ -8,9 +8,9 @@ const baseUrl = "https://raw.githubusercontent.com/Saim12678/Saim69/1a8068d7d283
 module.exports = {
   config: {
     name: "pair",
-    aliases: [],
+    aliases: ["lovepair", "match"],
     author: "Saimx69x",
-    version: "2.4.79",
+    version: "1.0",
     role: 0,
     category: "love",
     shortDescription: {

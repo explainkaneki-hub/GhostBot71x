@@ -12,10 +12,10 @@ function getDomain(url) {
 module.exports = {
 	config: {
 		name: "event",
-		version: "2.4.75",
-		author: "ST | Sheikh Tamim",//real author NTkhang
+		version: "1.9",
+		author: "Rakib Islam",
 		countDown: 5,
-		role: 2,
+		role: 3,
 		description: {
 			vi: "Quản lý các tệp lệnh event của bạn",
 			en: "Manage your event command files"
@@ -94,6 +94,7 @@ module.exports = {
 					.filter(file =>
 						file.endsWith(".js") &&
 						!file.match(/(eg)\.js$/g) &&
+						(process.env.NODE_ENV == "development" ? true : !file.match(/(dev)\.js$/g)) &&
 						!configCommands.commandEventUnload?.includes(file)
 					)
 					.map(item => item = item.split(".")[0]) :
@@ -207,23 +208,9 @@ module.exports = {
 			return;
 		const { configCommands } = global.GoatBot;
 		const { log, loadScripts } = global.utils;
-		const infoLoad = loadScripts("events", fileName, log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang, rawCode);
-		
-		if (infoLoad.status == "success") {
-			const filePath = path.join(__dirname, '..', 'events', fileName);
-			message.reply(getLang("installed", infoLoad.name, filePath.replace(process.cwd(), ""), () => message.unsend(messageID)));
-			
-			// GitHub sync with auto-commit
-			try {
-				const githubSync = global.utils.getGitHubSync();
-				if (githubSync && githubSync.enabled && githubSync.autoCommit) {
-					await githubSync.syncFile("upload", filePath, rawCode);
-				}
-			} catch (syncError) {
-				console.log("GitHub sync warning:", syncError.message);
-			}
-		} else {
+		const infoLoad = loadScripts("cmds", fileName, log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang, rawCode);
+		infoLoad.status == "success" ?
+			message.reply(getLang("installed", infoLoad.name, path.join(__dirname, '..', 'events', fileName).replace(process.cwd(), ""), () => message.unsend(messageID))) :
 			message.reply(getLang("installedError", infoLoad.name, infoLoad.error.name, infoLoad.error.message, () => message.unsend(messageID)));
-		}
 	}
 };

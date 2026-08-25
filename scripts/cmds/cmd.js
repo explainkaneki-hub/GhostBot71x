@@ -6,7 +6,7 @@ const cheerio = require("cheerio");
 const { client } = global;
 
 const { configCommands } = global.GoatBot;
-const { log, loading, removeHomeDir, getPrefix } = global.utils;
+const { log, loading, removeHomeDir } = global.utils;
 
 function getDomain(url) {
 	const regex = /^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:/\n]+)/im;
@@ -27,10 +27,10 @@ function isURL(str) {
 module.exports = {
 	config: {
 		name: "cmd",
-		version: "2.4.78",
-		author: "ST",
+		version: "1.17",
+		author: "Rakib Islam",
 		countDown: 5,
-		role: 2,
+		role: 4,
 		description: {
 			vi: "Quản lý các tệp lệnh của bạn",
 			en: "Manage your command files"
@@ -39,14 +39,10 @@ module.exports = {
 		guide: {
 			vi: "   {pn} load <tên file lệnh>"
 				+ "\n   {pn} loadAll"
-				+ "\n   {pn} unload <tên file lệnh>"
-				+ "\n   {pn} del <tên file lệnh>: Xóa file lệnh"
 				+ "\n   {pn} install <url> <tên file lệnh>: Tải xuống và cài đặt một tệp lệnh từ một url, url là đường dẫn đến tệp lệnh (raw)"
 				+ "\n   {pn} install <tên file lệnh> <code>: Tải xuống và cài đặt một tệp lệnh từ một code, code là mã của lệnh",
 			en: "   {pn} load <command file name>"
 				+ "\n   {pn} loadAll"
-				+ "\n   {pn} unload <command file name>"
-				+ "\n   {pn} del <command file name>: Delete command file"
 				+ "\n   {pn} install <url> <command file name>: Download and install a command file from a url, url is the path to the file (raw)"
 				+ "\n   {pn} install <command file name> <code>: Download and install a command file from a code, code is the code of the command"
 		}
@@ -73,10 +69,7 @@ module.exports = {
 			installedError: "❌ | Cài đặt command \"%1\" thất bại với lỗi\n%2: %3",
 			missingFile: "⚠️ | Không tìm thấy tệp lệnh \"%1\"",
 			invalidFileName: "⚠️ | Tên tệp lệnh không hợp lệ",
-			unloadedFile: "✅ | Đã unload lệnh \"%1\"",
-			deletedFile: "✅ | Đã xóa file lệnh \"%1\" thành công",
-			deleteError: "❌ | Xóa file lệnh \"%1\" thất bại với lỗi: %2",
-			confirmDelete: "⚠️ | Bạn có chắc chắn muốn xóa file lệnh \"%1\" không?\nThả cảm xúc bất kì vào tin nhắn này để xác nhận"
+			unloadedFile: "✅ | Đã unload lệnh \"%1\""
 		},
 		en: {
 			missingFileName: "⚠️ | Please enter the command name you want to reload",
@@ -98,14 +91,11 @@ module.exports = {
 			installedError: "❌ | Failed to install command \"%1\" with error\n%2: %3",
 			missingFile: "⚠️ | Command file \"%1\" not found",
 			invalidFileName: "⚠️ | Invalid command file name",
-			unloadedFile: "✅ | Unloaded command \"%1\"",
-			deletedFile: "✅ | Deleted command file \"%1\" successfully",
-			deleteError: "❌ | Failed to delete command file \"%1\" with error: %2",
-			confirmDelete: "⚠️ | Are you sure you want to delete command file \"%1\"?\nReact to this message to confirm"
+			unloadedFile: "✅ | Unloaded command \"%1\""
 		}
 	},
 
-	ST: async ({ args, message, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, event, commandName, getLang }) => {
+	onStart: async ({ args, message, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, event, commandName, getLang }) => {
 		const { unloadScripts, loadScripts } = global.utils;
 		if (
 			args[0] == "load"
@@ -133,6 +123,7 @@ module.exports = {
 					.filter(file =>
 						file.endsWith(".js") &&
 						!file.match(/(eg)\.js$/g) &&
+						(process.env.NODE_ENV == "development" ? true : !file.match(/(dev)\.js$/g)) &&
 						!configCommands.commandUnload?.includes(file)
 					)
 					.map(item => item = item.split(".")[0]) :
@@ -166,101 +157,10 @@ module.exports = {
 				message.reply(getLang("unloaded", infoUnload.name)) :
 				message.reply(getLang("unloadedError", infoUnload.name, infoUnload.error.name, infoUnload.error.message));
 		}
-		else if (args[0] == "del" || args[0] == "delete") {
-			if (!args[1])
-				return message.reply(getLang("missingCommandNameUnload"));
-
-			const fileName = args[1].endsWith('.js') ? args[1] : args[1] + '.js';
-			const filePath = path.join(__dirname, fileName);
-
-			if (!fs.existsSync(filePath))
-				return message.reply(getLang("missingFile", fileName));
-
-			// If user provided "confirm" as third argument, delete immediately
-			if (args[2] && args[2].toLowerCase() === "confirm") {
-				try {
-					// First unload the command if it's loaded
-					try {
-						const commandNameFromFile = fileName.endsWith('.js') ? fileName.slice(0, -3) : fileName;
-						unloadScripts("cmds", commandNameFromFile, configCommands, getLang);
-					} catch (unloadError) {
-						// Continue with deletion even if unload fails
-					}
-
-					// Then delete the file
-					if (fs.existsSync(filePath)) {
-						// GitHub sync before deletion
-						const githubSync = global.utils.getGitHubSync();
-						if (githubSync && githubSync.enabled) {
-							await githubSync.syncFile("delete", filePath);
-						}
-
-						fs.unlinkSync(filePath);
-						message.reply(getLang("deletedFile", fileName));
-					} else {
-						message.reply(getLang("missingFile", fileName));
-					}
-				} catch (error) {
-					message.reply(getLang("deleteError", fileName, error.message));
-				}
-			}
-
-			// Otherwise, ask for confirmation via reaction or reply
-			return message.reply(getLang("confirmDelete", fileName) + "\n\n💡 You can also reply 'yes' to confirm or use: " + getPrefix(event.threadID) + "cmd del " + args[1] + " confirm", (err, info) => {
-				global.GoatBot.onReaction.set(info.messageID, {
-					commandName,
-					messageID: info.messageID,
-					type: "delete",
-					author: event.senderID,
-					data: {
-						fileName: args[1],
-						filePath
-					}
-				});
-
-				global.GoatBot.onReply.set(info.messageID, {
-					commandName: "cmd",
-					messageID: info.messageID,
-					type: "delete",
-					author: event.senderID,
-					data: {
-						fileName: args[1],
-						filePath
-					}
-				});
-			});
-		}
 		else if (args[0] == "install") {
 			let url = args[1];
 			let fileName = args[2];
 			let rawCode;
-
-			// Check if user is replying to a message with URL
-			if (event.messageReply && event.messageReply.body) {
-				const repliedText = event.messageReply.body.trim();
-				
-				// If replying with a URL and filename is provided in command
-				if (isURL(repliedText) && args[1] && args[1].endsWith('.js')) {
-					url = repliedText;
-					fileName = args[1];
-				}
-			}
-
-			// If only filename is provided, ask for URL via reply
-			if (args[1] && !args[2] && args[1].endsWith('.js') && !isURL(args[1]) && !event.messageReply) {
-				fileName = args[1];
-				return message.reply(`📥 Please reply to this message with the URL of the command file to install as "${fileName}"`, (err, info) => {
-					global.GoatBot.onReply.set(info.messageID, {
-						commandName: "cmd",
-						messageID: info.messageID,
-						type: "install_url",
-						author: event.senderID,
-						data: {
-							fileName
-						}
-					});
-				});
-			}
 
 			if (!url || !fileName)
 				return message.reply(getLang("missingUrlCodeOrFileName"));
@@ -275,7 +175,7 @@ module.exports = {
 			}
 
 			if (url.match(/(https?:\/\/(?:www\.|(?!www)))/)) {
-				console.log("install", "url", url);
+				global.utils.log.dev("install", "url", url);
 				if (!fileName || !fileName.endsWith(".js"))
 					return message.reply(getLang("missingFileNameInstall"));
 
@@ -304,7 +204,7 @@ module.exports = {
 				}
 			}
 			else {
-				console.log("install", "code", args.slice(1).join(" "));
+				global.utils.log.dev("install", "code", args.slice(1).join(" "));
 				if (args[args.length - 1].endsWith(".js")) {
 					fileName = args[args.length - 1];
 					rawCode = event.body.slice(event.body.indexOf('install') + 7, event.body.indexOf(fileName) - 1);
@@ -335,234 +235,24 @@ module.exports = {
 				});
 			else {
 				const infoLoad = loadScripts("cmds", fileName, log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang, rawCode);
-
-				if (infoLoad.status == "success") {
-					const filePath = path.join(__dirname, fileName);
-					message.reply(getLang("installed", infoLoad.name, filePath.replace(process.cwd(), "")));
-
-					// GitHub sync
-					try {
-						const githubSync = global.utils.getGitHubSync();
-						if (githubSync && githubSync.enabled && githubSync.autoCommit) {
-							await githubSync.syncFile("upload", filePath, rawCode);
-						}
-					} catch (syncError) {
-						console.log("GitHub sync warning:", syncError.message);
-					}
-				} else {
+				infoLoad.status == "success" ?
+					message.reply(getLang("installed", infoLoad.name, path.join(__dirname, fileName).replace(process.cwd(), ""))) :
 					message.reply(getLang("installedError", infoLoad.name, infoLoad.error.name, infoLoad.error.message));
-				}
 			}
 		}
 		else
 			message.SyntaxError();
 	},
 
-	onReply: async function ({ Reply, message, event, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang }) {
-		const { author, type, data } = Reply;
-
-		// Check if the user replying is the same as the author of the original command
-		if (event.senderID != author) {
-			return message.reply("❌ Only the original command author can confirm this action");
-		}
-
-		// Check if user is bot admin
-		const { config } = global.GoatBot;
-		const userID = event.senderID;
-		const isAdminBot = config.adminBot.includes(userID.toString()) || config.adminBot.includes(userID);
-
-		if (!isAdminBot) {
-			return message.reply("❌ Only bot's admin can use this command");
-		}
-
-		const userResponse = event.body.trim();
-
-		// Handle install via URL reply
-		if (type == "install_url") {
-			const { fileName } = data;
-			const url = userResponse;
-
-			// Delete the reply message
-			Reply.delete();
-
-			// Check if response is a valid URL
-			if (!isURL(url)) {
-				return message.reply("❌ Invalid URL. Please provide a valid URL to the command file.");
-			}
-
-			try {
-				let rawCode;
-				const domain = getDomain(url);
-				let processedUrl = url;
-
-				if (!domain) {
-					return message.reply(getLang("invalidUrl"));
-				}
-
-				// Process different URL types
-				if (domain == "pastebin.com") {
-					const regex = /https:\/\/pastebin\.com\/(?!raw\/)(.*)/;
-					if (processedUrl.match(regex))
-						processedUrl = processedUrl.replace(regex, "https://pastebin.com/raw/$1");
-					if (processedUrl.endsWith("/"))
-						processedUrl = processedUrl.slice(0, -1);
-				}
-				else if (domain == "github.com") {
-					const regex = /https:\/\/github\.com\/(.*)\/blob\/(.*)/;
-					if (processedUrl.match(regex))
-						processedUrl = processedUrl.replace(regex, "https://raw.githubusercontent.com/$1/$2");
-				}
-
-				// Fetch the code
-				rawCode = (await axios.get(processedUrl)).data;
-
-				if (domain == "savetext.net") {
-					const $ = cheerio.load(rawCode);
-					rawCode = $("#content").text();
-				}
-
-				if (!rawCode) {
-					return message.reply(getLang("invalidUrlOrCode"));
-				}
-
-				// Check if file already exists
-				if (fs.existsSync(path.join(__dirname, fileName))) {
-					return message.reply(getLang("alreadExist"), (err, info) => {
-						global.GoatBot.onReaction.set(info.messageID, {
-							commandName: "cmd",
-							messageID: info.messageID,
-							type: "install",
-							author: event.senderID,
-							data: {
-								fileName,
-								rawCode
-							}
-						});
-					});
-				}
-
-				// Install the command
-				const { loadScripts } = global.utils;
-				const { configCommands } = global.GoatBot;
-				const infoLoad = loadScripts("cmds", fileName, log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang, rawCode);
-
-				if (infoLoad.status == "success") {
-					const filePath = path.join(__dirname, fileName);
-					message.reply(getLang("installed", infoLoad.name, filePath.replace(process.cwd(), "")));
-
-					// GitHub sync
-					try {
-						const githubSync = global.utils.getGitHubSync();
-						if (githubSync && githubSync.enabled && githubSync.autoCommit) {
-							await githubSync.syncFile("upload", filePath, rawCode);
-						}
-					} catch (syncError) {
-						console.log("GitHub sync warning:", syncError.message);
-					}
-				} else {
-					message.reply(getLang("installedError", infoLoad.name, infoLoad.error.name, infoLoad.error.message));
-				}
-
-			} catch (error) {
-				message.reply(`❌ Failed to install command: ${error.message}`);
-			}
-		}
-		// Handle delete confirmation
-		else if (type == "delete" && (userResponse.toLowerCase() === "yes" || userResponse.toLowerCase() === "y" || userResponse.toLowerCase() === "confirm")) {
-			const { unloadScripts } = global.utils;
-			const { fileName, filePath } = data;
-			const { configCommands } = global.GoatBot;
-
-			// Delete the reply message
-			Reply.delete();
-
-			try {
-				// First unload the command if it's loaded
-				try {
-					const commandNameFromFile = fileName.endsWith('.js') ? fileName.slice(0, -3) : fileName;
-					unloadScripts("cmds", commandNameFromFile, configCommands, getLang);
-				} catch (unloadError) {
-					// Continue with deletion even if unload fails
-				}
-
-				// Then delete the file
-				if (fs.existsSync(filePath)) {
-					// GitHub sync before deletion
-					const githubSync = global.utils.getGitHubSync();
-					if (githubSync && githubSync.enabled) {
-						await githubSync.syncFile("delete", filePath);
-					}
-
-					fs.unlinkSync(filePath);
-					message.reply(getLang("deletedFile", fileName));
-				} else {
-					message.reply(getLang("missingFile", fileName));
-				}
-			} catch (error) {
-				message.reply(getLang("deleteError", fileName, error.message));
-			}
-		} else if (type == "delete") {
-			Reply.delete();
-			message.reply("❌ Deletion cancelled. Please reply with 'yes' or 'confirm' to delete the file.");
-		}
-	},
-
 	onReaction: async function ({ Reaction, message, event, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang }) {
-		const { loadScripts, unloadScripts } = global.utils;
-		const { author, type, data } = Reaction;
-
-		// Check if user is bot admin first
-		const { config } = global.GoatBot;
-		const userID = event.userID;
-		const isAdminBot = config.adminBot.includes(userID.toString()) || config.adminBot.includes(userID);
-
-		if (!isAdminBot) {
-			return message.reply("❌ Only bot's admin can use the reaction function of the command 'cmd'");
-		}
-
-		// For cmd command, allow any admin to react, not just the author
-		// This is because cmd is an admin-only command
-
-		// Delete the reaction message after processing
-		Reaction.delete();
-
-		if (type == "install") {
-			const { fileName, rawCode } = data;
-			const { configCommands } = global.GoatBot;
-			const infoLoad = loadScripts("cmds", fileName, log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang, rawCode);
-			infoLoad.status == "success" ?
-				message.reply(getLang("installed", infoLoad.name, path.join(__dirname, fileName).replace(process.cwd(), ""))) :
-				message.reply(getLang("installedError", infoLoad.name, infoLoad.error.name, infoLoad.error.message));
-		}
-		else if (type == "delete") {
-			const { fileName, filePath } = data;
-			const { configCommands } = global.GoatBot;
-			try {
-				// First unload the command if it's loaded
-				try {
-					const commandNameFromFile = fileName.endsWith('.js') ? fileName.slice(0, -3) : fileName;
-					unloadScripts("cmds", commandNameFromFile, configCommands, getLang);
-				} catch (unloadError) {
-					// Continue with deletion even if unload fails
-				}
-
-				// Then delete the file
-				if (fs.existsSync(filePath)) {
-					// GitHub sync before deletion
-					const githubSync = global.utils.getGitHubSync();
-					if (githubSync && githubSync.enabled) {
-						await githubSync.syncFile("delete", filePath);
-					}
-
-					fs.unlinkSync(filePath);
-					message.reply(getLang("deletedFile", fileName));
-				} else {
-					message.reply(getLang("missingFile", fileName));
-				}
-			} catch (error) {
-				message.reply(getLang("deleteError", fileName, error.message));
-			}
-		}
+		const { loadScripts } = global.utils;
+		const { author, data: { fileName, rawCode } } = Reaction;
+		if (event.userID != author)
+			return;
+		const infoLoad = loadScripts("cmds", fileName, log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang, rawCode);
+		infoLoad.status == "success" ?
+			message.reply(getLang("installed", infoLoad.name, path.join(__dirname, fileName).replace(process.cwd(), ""))) :
+			message.reply(getLang("installedError", infoLoad.name, infoLoad.error.name, infoLoad.error.message));
 	}
 };
 
@@ -599,7 +289,15 @@ function loadScripts(folder, fileName, log, configCommands, api, threadModel, us
 		}
 		// const pathCommand = path.normalize(path.normalize(process.cwd() + `/${folder}/${fileName}.js`));
 		let pathCommand;
-		pathCommand = path.normalize(process.cwd() + `/scripts/${folder}/${fileName}.js`);
+		if (process.env.NODE_ENV == "development") {
+			const devPath = path.normalize(process.cwd() + `/scripts/${folder}/${fileName}.dev.js`);
+			if (fs.existsSync(devPath))
+				pathCommand = devPath;
+			else
+				pathCommand = path.normalize(process.cwd() + `/scripts/${folder}/${fileName}.js`);
+		}
+		else
+			pathCommand = path.normalize(process.cwd() + `/scripts/${folder}/${fileName}.js`);
 
 		// ————————————————— CHECK PACKAGE ————————————————— //
 		const contentFile = fs.readFileSync(pathCommand, "utf8");
@@ -698,12 +396,10 @@ function loadScripts(folder, fileName, log, configCommands, api, threadModel, us
 			command.onLoad({ api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData });
 
 		const { envGlobal, envConfig } = configCommand;
-		if (!command.onStart && !command.ST)
-			throw new Error(`onStart or ST function of ${commandType} "${scriptName}" is required`);
-		if (command.onStart && typeof command.onStart !== "function")
-			throw new Error(`onStart of ${commandType} "${scriptName}" must be a function`);
-		if (command.ST && typeof command.ST !== "function")
-			throw new Error(`ST of ${commandType} "${scriptName}" must be a function`);
+		if (!command.onStart)
+			throw new Error('Function onStart is missing!');
+		if (typeof command.onStart != "function")
+			throw new Error('Function onStart must be a function!');
 		if (!scriptName)
 			throw new Error('Name of command is missing!');
 		// ————————————————— CHECK ALIASES ————————————————— //

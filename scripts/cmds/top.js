@@ -1,34 +1,31 @@
-const { GoatWrapper } = require("fca-liane-utils");
+const fs = require("fs-extra");
+const { leaderboardCard, formatMoney } = require("../utils/economyCards");
 
 module.exports = {
   config: {
     name: "top",
-    aliases: ["rich", "leaderboard", "coinstop"],
-    version: "1.0",
-    author: "Nisanxnx",
-    countDown: 5,
+    aliases: ["leaderboard", "rankmoney"],
+    version: "2.0",
+    author: "Rakib Islam",
     role: 0,
-    shortDescription: "Top 10 richest users",
-    longDescription: "Show top 10 users with highest coin balance",
     category: "economy",
-    guide: "{p}top"
+    guide: { en: "{pn} | {pn} slot | {pn} mine" }
   },
 
-  onStart: async function ({ message, usersData }) {
-    const allUsers = await usersData.getAll();
-    const sorted = allUsers
-      .filter(u => u.money && u.money > 0)
-      .sort((a, b) => b.money - a.money)
-      .slice(0, 10);
-
-    if (sorted.length === 0) return message.reply("📛 এখনো কোনো ইউজারের ব্যালেন্স নেই!");
-
-    let msg = "🏆 টপ 10 ধনী ইউজার:\n\n";
-    for (let i = 0; i < sorted.length; i++) {
-      const user = sorted[i];
-      msg += `${i + 1}. ${user.name || "Unknown"} - ${user.money} কয়েন\n`;
-    }
-
-    message.reply(msg);
+  onStart: async function ({ args, message, usersData }) {
+    const game = String(args[0] || "balance").toLowerCase();
+    const key = game === "slot" ? "slot" : game === "mine" ? "mine" : "money";
+    const all = await usersData.getAll();
+    const users = all
+      .filter(user => user && (key === "money" || Number(user.gameStats?.[key] || 0) > 0))
+      .map(user => ({ ...user, metricValue: key === "money" ? Number(user.money || 0) : Number(user.gameStats[key] || 0) }))
+      .sort((a, b) => b.metricValue - a.metricValue)
+      .slice(0, 15);
+    if (!users.length) return message.reply(`📊 ${game} game-এর কোনো ranking data এখনো নেই।`);
+    const card = await leaderboardCard(users, usersData, `${game.toUpperCase()} TOP 15`, key === "money" ? "BALANCE" : `${game.toUpperCase()} SCORE`);
+    return message.reply(
+      { body: `🏆 ${game === "balance" ? "Balance" : game} Top 15\n${users.map((u, i) => `${i + 1}. ${u.name || u.userID} — ${formatMoney(u.metricValue)}`).join("\n")}`, attachment: fs.createReadStream(card) },
+      () => fs.remove(card).catch(() => {})
+    );
   }
 };

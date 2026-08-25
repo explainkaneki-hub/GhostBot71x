@@ -1,9 +1,12 @@
+const fs = require("fs-extra");
+const { balanceCard, fullMoney } = require("../utils/economyCards");
+
 module.exports = {
 	config: {
 		name: "balance",
 		aliases: ["bal"],
-		version: "2.4.71",
-		author: "NTKhang | Enhanced by ST",
+		version: "1.2",
+		author: "Rakib Islam",
 		countDown: 5,
 		role: 0,
 		description: {
@@ -21,34 +24,22 @@ module.exports = {
 
 	langs: {
 		vi: {
-			money: "Bạn đang có %1$",
-			moneyOf: "%1 đang có %2$"
+			money: "Bạn đang có %100$",
+			moneyOf: "%1 đang có %200$"
 		},
 		en: {
-			money: "You have %1$",
-			moneyOf: "%1 has %2$"
+			money: "You have %100$",
+			moneyOf: "%1 has %200$"
 		}
 	},
 
-	ST: async function ({ message, usersData, event, getLang }) {
-		const { bankData } = global.db;
-		
-		if (Object.keys(event.mentions).length > 0) {
-			const uids = Object.keys(event.mentions);
-			let msg = "";
-			for (const uid of uids) {
-				const userMoney = await usersData.get(uid, "money");
-				const userBank = await bankData.get(uid);
-				const bankBalance = userBank ? userBank.bankBalance : 0;
-				msg += `${event.mentions[uid].replace("@", "")}\n💰 Wallet: $${userMoney.toLocaleString()}\n🏦 Bank: $${bankBalance.toLocaleString()}\n\n`;
-			}
-			return message.reply(msg);
-		}
-		
-		const userData = await usersData.get(event.senderID);
-		const userBank = await bankData.get(event.senderID);
-		const bankBalance = userBank ? userBank.bankBalance : 0;
-		
-		message.reply(`💰 Your Balance\n━━━━━━━━━━━━━━━━\n💵 Wallet: $${userData.money.toLocaleString()}\n🏦 Bank: $${bankBalance.toLocaleString()}\n━━━━━━━━━━━━━━━━\n💎 Total: $${(userData.money + bankBalance).toLocaleString()}`);
+	onStart: async function ({ message, usersData, event }) {
+		const uid = Object.keys(event.mentions || {})[0] || event.messageReply?.senderID || event.senderID;
+		const userData = await usersData.get(uid);
+		const card = await balanceCard(userData, uid, usersData);
+		return message.reply(
+			{ body: `💰 ${userData?.name || "User"}\nBalance: ৳${fullMoney(userData?.money)}`, attachment: fs.createReadStream(card) },
+			() => fs.remove(card).catch(() => {})
+		);
 	}
 };

@@ -1,105 +1,61 @@
-const fs = require("fs-extra");
+/**
+ * @GHOST_NET_RESTART_ENGINE
+ * @DESIGN: ULTRA-NEON ANIMATION
+ * @AUTHOR: RAKIB ISLAM
+ */
 
-const pathFile = `${__dirname}/tmp/restart.txt`;
-
-function isE2EEThreadID(threadID) {
-	return typeof threadID === "string" && threadID.includes("@");
-}
-
-function readRestartState() {
-	if (!fs.existsSync(pathFile))
-		return null;
-
-	const raw = fs.readFileSync(pathFile, "utf-8").trim();
-	if (!raw)
-		return null;
-
-	try {
-		const data = JSON.parse(raw);
-		if (data && data.threadID && data.time)
-			return data;
-	}
-	catch (_) {
-		// Backward compatibility with the old "threadID time" format.
-	}
-
-	const [threadID, time] = raw.split(" ");
-	if (!threadID || !time)
-		return null;
-	return { threadID, time: Number(time), isE2EE: isE2EEThreadID(threadID) };
-}
-
-async function sendRestartNotification(api, data) {
-	const time = Number(data.time) || Date.now();
-	await api.sendMessage(`✅ | Bot restarted\n⏰ | Time: ${(Date.now() - time) / 1000}s`, data.threadID);
-	fs.removeSync(pathFile);
-}
-
-function queueE2EERestartNotification(api, data) {
-	global.GoatBot.pendingE2eeRestartNotifications = global.GoatBot.pendingE2eeRestartNotifications || [];
-
-	const exists = global.GoatBot.pendingE2eeRestartNotifications.some(item => item.pathFile === pathFile);
-	if (!exists) {
-		global.GoatBot.pendingE2eeRestartNotifications.push({
-			...data,
-			pathFile,
-			source: "restart"
-		});
-	}
-
-	if (global.GoatBot.e2eeFullyReady && typeof global.GoatBot.sendPendingE2eeRestartNotifications === "function") {
-		global.GoatBot.sendPendingE2eeRestartNotifications(api).catch(() => {});
-	}
-}
+const process = require('process');
 
 module.exports = {
-	config: {
-		name: "restart",
-		version: "1.2",
-		author: "NTKhang",
-		countDown: 5,
-		role: 2,
-		description: {
-			vi: "Khởi động lại bot",
-			en: "Restart bot"
-		},
-		category: "Owner",
-		guide: {
-			vi: "   {pn}: Khởi động lại bot",
-			en: "   {pn}: Restart bot"
-		}
-	},
+  config: {
+    name: "restart",
+    aliases: ["reboot", "rst"],
+    version: "1.0",
+    author: "RAKIB ISLAM",
+    countDown: 10,
+    role: 2, // Admin Only
+    category: "system",
+    shortDescription: { en: "High-level Neon Restart Animation" }
+  },
 
-	langs: {
-		vi: {
-			restartting: "🔄 | Đang khởi động lại bot..."
-		},
-		en: {
-			restartting: "🔄 | Restarting bot..."
-		}
-	},
+  onStart: async function ({ message, api, event }) {
+    // Stage 1: Initializing
+    const stage1 = 
+      `╭──────❍ 𝗚𝗛𝗢𝗦𝗧-𝗡𝗘𝗧 ❍──────╮\n` +
+      `│ 🧪 𝗦𝘆𝘀𝘁𝗲𝗺: 𝗜𝗻𝗶𝘁𝗶𝗮𝗹𝗶𝘇𝗶𝗻𝗴...\n` +
+      `│ 🟢 𝗦𝘁𝗮𝘁𝘂𝘀: [▒▒▒▒▒▒▒▒▒▒] 𝟬%\n` +
+      `│ ⚙️ 𝗖𝗼𝗿𝗲: 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 𝗛𝗲𝗮𝗹𝘁𝗵\n` +
+      `╰─────────── 💠 ───────────╯`;
 
-	onLoad: function ({ api }) {
-		const data = readRestartState();
-		if (!data)
-			return;
+    const sent = await message.reply(stage1);
 
-		if (isE2EEThreadID(data.threadID))
-			return queueE2EERestartNotification(api, data);
+    // Stage 2: Processing (1 second delay)
+    setTimeout(async () => {
+      const stage2 = 
+        `╭──────❍ 𝗚𝗛𝗢𝗦𝗧-𝗡𝗘𝗧 ❍──────╮\n` +
+        `│ ⚡ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀: 𝗗𝗮𝘁𝗮𝗯𝗮𝘀𝗲 𝗖𝗹𝗲𝗮𝗻𝗶𝗻𝗴\n` +
+        `│ 🟡 𝗦𝘁𝗮𝘁𝘂𝘀: [██████▒▒▒▒] 𝟲𝟱%\n` +
+        `│ 🛰️ 𝗡𝗲𝘁𝘄𝗼𝗿𝗸: 𝗥𝗲𝗳𝗿𝗲𝘀𝗵𝗶𝗻𝗴 𝗜𝗣\n` +
+        `╰─────────── 💠 ───────────╯`;
+      await api.editMessage(stage2, sent.messageID);
+    }, 1000);
 
-		sendRestartNotification(api, data).catch(() => {});
-	},
-
-	onStart: async function ({ message, event, getLang }) {
-		fs.ensureDirSync(`${__dirname}/tmp`);
-		fs.writeFileSync(pathFile, JSON.stringify({
-			threadID: event.threadID,
-			messageID: event.messageID,
-			isE2EE: isE2EEThreadID(event.threadID),
-			time: Date.now()
-		}, null, 2));
-
-		await message.reply(getLang("restartting"));
-		process.exit(2);
-	}
+    // Stage 3: Finalizing (2.5 seconds delay)
+    setTimeout(async () => {
+      const stage3 = 
+        `╭──────❍ 𝗚𝗛𝗢𝗦𝗧-𝗡𝗘𝗧 ❍──────╮\n` +
+        `│ 💎 𝗦𝘆𝘀𝘁𝗲𝗺: 𝗥𝗲𝗯𝗼𝗼𝘁𝗶𝗻𝗴 𝗖𝗼𝗿𝗲\n` +
+        `│ 🔵 𝗦𝘁𝗮𝘁𝘂𝘀: [██████████] 𝟭𝟬𝟬%\n` +
+        `│ ✅ 𝗥𝗲𝗮𝗱𝘆: 𝗚𝗼𝗱 𝗠𝗼𝗱𝗲 𝗔𝗰𝘁𝗶𝘃𝗲\n` +
+        `╰─────────── 💠 ───────────╯\n` +
+        `🔱 𝗦𝗲𝗲 𝘆𝗼𝘂 𝗼𝗻 𝘁𝗵𝗲 𝗼𝘁𝗵𝗲𝗿 𝘀𝗶𝗱𝗲, 𝗕𝗼𝘀𝘀!`;
+      
+      await api.editMessage(stage3, sent.messageID);
+      
+      // বটের মেইন প্রসেস কিল করা যাতে রিপলিট রিস্টার্ট নেয়
+      setTimeout(() => {
+        process.exit(1);
+      }, 500);
+    }, 2500);
+  }
 };

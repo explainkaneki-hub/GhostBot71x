@@ -5,9 +5,9 @@ module.exports = {
 		name: "setavt",
 		aliases: ["changeavt", "setavatar"],
 		version: "1.3",
-		author: "NTKhang",
+		author: "Rakib Islam",
 		countDown: 5,
-		role: 2,
+		role: 3,
 		description: {
 			vi: "Đổi avatar bot",
 			en: "Change bot avatar"

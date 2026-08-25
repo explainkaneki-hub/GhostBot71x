@@ -1,11 +1,14 @@
 const { drive, getStreamFromURL, getExtFromUrl, getTime } = global.utils;
+const fs = require("fs-extra");
+const path = require("path");
+const WELCOME_CARD_DIR = path.join(__dirname, "assets", "welcome");
 
 module.exports = {
 	config: {
 		name: "setwelcome",
 		aliases: ["setwc"],
-		version: "2.4.78",
-		author: "NTKhang | Enhanced by ST",
+		version: "1.7",
+		author: "Rakib Islam",
 		countDown: 5,
 		role: 1,
 		description: {
@@ -21,10 +24,6 @@ module.exports = {
 					+ "\n  + {boxName}:  tên của nhóm chat"
 					+ "\n  + {multiple}: bạn || các bạn"
 					+ "\n  + {session}:  buổi trong ngày"
-					+ "\n  + {memberNumber}: số thứ tự thành viên"
-					+ "\n  + {totalMembers}: tổng số thành viên"
-					+ "\n  + {oo}: người mời bot vào nhóm"
-					+ "\n  + {dailyJoins}: số người tham gia hôm nay"
 					+ "\n\n   Ví dụ:"
 					+ "\n    {pn} text Hello {userName}, welcome to {boxName}, chúc {multiple} một ngày mới vui vẻ"
 					+ "\n"
@@ -42,10 +41,6 @@ module.exports = {
 					+ "\n  + {boxName}:  group chat name"
 					+ "\n  + {multiple}: you || you guys"
 					+ "\n  + {session}:  session in day"
-					+ "\n  + {memberNumber}: member position number"
-					+ "\n  + {totalMembers}: total group members"
-					+ "\n  + {oo}: person who invited the bot"
-					+ "\n  + {dailyJoins}: number of people who joined today"
 					+ "\n\n   Example:"
 					+ "\n    {pn} text Hello {userName}, welcome to {boxName}, have a nice day {multiple}"
 					+ "\n"
@@ -89,6 +84,36 @@ module.exports = {
 		const { data, settings } = await threadsData.get(threadID);
 
 		switch (args[0]) {
+case "card": {
+const requested = String(args[1] || "").trim();
+if (!requested || requested === "list") {
+await fs.ensureDir(WELCOME_CARD_DIR);
+const cards = (await fs.readdir(WELCOME_CARD_DIR))
+  .filter(file => /\.(png|jpe?g|gif|webp)$/i.test(file))
+  .sort();
+return message.reply(
+  cards.length
+    ? `🖼️ Available welcome cards:\n${cards.map(file => `• ${file}`).join("\n")}\n\nUse: ${global.utils.getPrefix(threadID)}setwelcome card <filename>`
+    : "🖼️ কোনো card পাওয়া যায়নি। Card-টি scripts/cmds/assets/welcome/ folder-এ রাখুন।"
+);
+}
+if (requested === "reset") {
+delete data.welcomeCard;
+await threadsData.set(threadID, { data });
+return message.reply("🔄 Welcome card reset হয়েছে।");
+}
+const cardName = path.basename(requested);
+if (cardName !== requested || !/\.(png|jpe?g|gif|webp)$/i.test(cardName)) {
+return message.reply("❌ শুধু PNG, JPG, GIF অথবা WEBP card ব্যবহার করুন।");
+}
+await fs.ensureDir(WELCOME_CARD_DIR);
+if (!fs.existsSync(path.join(WELCOME_CARD_DIR, cardName))) {
+return message.reply(`❌ ${cardName} পাওয়া যায়নি। আগে folder-এ upload করুন।`);
+}
+data.welcomeCard = cardName;
+await threadsData.set(threadID, { data });
+return message.reply(`✅ এই group-এর welcome card এখন ${cardName}`);
+}
 			case "text": {
 				if (!args[1])
 					return message.reply(getLang("missingContent"));

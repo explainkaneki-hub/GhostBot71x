@@ -1,78 +1,112 @@
 const fs = require("fs-extra");
+const path = require("path");
+const axios = require("axios");
 const { createCanvas, loadImage } = require("canvas");
+
+const bgURL = "https://files.catbox.moe/20pg09.jpg";
+const localBgPath = path.join(__dirname, "cache", "kiss_bg.jpg");
+
+const avatarConfig = {
+  boy: { x: 255, y: 50, size: 107 },
+  girl: { x: 367, y: 160, size: 97 }
+};
 
 module.exports = {
   config: {
     name: "kiss",
-    version: "1.0.11",
-    author: "Rakib Adil",
+    version: "2.0",
+    author: "Saimx69x",
     countDown: 5,
     role: 0,
-    longDescription: "{p}kiss @mention or reply someone you want to kiss that person 😚",
-    category: "funny",
-    guide: "{p}kiss and mention someone you want to kiss 🥴",
-	 usePrefix : true,//you can use this cmd to no prefix, just set the true to false.
-	 premium: false,
-    notes : " If you change the author then the command will not work and not usable"
+    description:
+      "💋 Create a romantic kiss image between you and your tagged partner! This command beautifully merges both avatars on a stylish background to capture the perfect kiss moment. Just tag someone or reply to their message to share a lovely virtual kiss! 💞",
+    category: "love",
+    guide: {
+      en: "{pn} @tag or reply to someone's message — Create a romantic kiss image 💋"
+    }
   },
 
-  onStart: async function ({ api, message, event, usersData }) {
-	const owner = module.exports.config;
-	const eAuth = "UmFraWIgQWRpbA==";
-	const dAuth = Buffer.from(eAuth, "base64").toString("utf8");
-		if(owner.author !== dAuth) return message.reply("you've changed the author name, please set it to default(Rakib Adil) otherwise this command will not work.🙂");
+  langs: {
+    en: {
+      noTag: "Please tag someone or reply to their message to use this command 💋"
+    }
+  },
 
-    let one = event.senderID, two;
-    const mention = Object.keys(event.mentions);
-    if(mention.length > 0){
-        two = mention[0];
-    }else if(event.type === "message_reply"){
-        two = event.messageReply.senderID;
-    }else{
-        message.reply("please mention or reply someone message to kiss him/her 🌚")
-    };
+  onStart: async function ({ event, message, usersData, args, getLang }) {
+    const uid1 = event.senderID;
+    let uid2 = Object.keys(event.mentions)[0];
+
+    if (!uid2 && event.messageReply?.senderID)
+      uid2 = event.messageReply.senderID;
+
+    if (!uid2)
+      return message.reply(getLang("noTag"));
 
     try {
-      const avatarURL1 = await usersData.getAvatarUrl(one);
-      const avatarURL2 = await usersData.getAvatarUrl(two);
+      const name1 = (await usersData.getName(uid1)) || "Unknown";
+      const name2 =
+        (await usersData.getName(uid2)) ||
+        (event.mentions[uid2]
+          ? event.mentions[uid2].replace("@", "")
+          : "Unknown");
 
-      const canvas = createCanvas(950, 850);
+      await fs.ensureDir(path.dirname(localBgPath));
+      if (!fs.existsSync(localBgPath)) {
+        const bgRes = await axios.get(bgURL, { responseType: "arraybuffer" });
+        await fs.writeFile(localBgPath, bgRes.data);
+      }
+
+      const [avatarURL1, avatarURL2] = await Promise.all([
+        usersData.getAvatarUrl(uid1),
+        usersData.getAvatarUrl(uid2)
+      ]);
+
+      const [boy, girl, bgImg] = await Promise.all([
+        loadImage(avatarURL1).catch(() => null),
+        loadImage(avatarURL2).catch(() => null),
+        loadImage(localBgPath)
+      ]);
+
+      if (!boy || !girl)
+        throw new Error("Avatar load failed.");
+
+      const canvas = createCanvas(bgImg.width, bgImg.height);
       const ctx = canvas.getContext("2d");
 
-      const background = await loadImage("https://files.catbox.moe/6qg782.jpg");
-      ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bgImg, 0, 0);
 
-      const avatar1 = await loadImage(avatarURL1);
-      const avatar2 = await loadImage(avatarURL2);
+      function drawCircle(img, x, y, size) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(img, x, y, size, size);
+        ctx.restore();
+      }
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(725, 250, 85, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(avatar1, 640, 170, 170, 170);
-      ctx.restore();
+      drawCircle(boy, avatarConfig.boy.x, avatarConfig.boy.y, avatarConfig.boy.size);
+      drawCircle(girl, avatarConfig.girl.x, avatarConfig.girl.y, avatarConfig.girl.size);
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(175, 370, 85, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(avatar2, 90, 280, 170, 170);
-      ctx.restore();
+      const savePath = path.join(__dirname, "tmp");
+      await fs.ensureDir(savePath);
+      const imgPath = path.join(savePath, `${uid1}_${uid2}_kiss.jpg`);
+      await fs.writeFile(imgPath, canvas.toBuffer("image/jpeg"));
 
-      const outputPath = `${__dirname}/tmp/kiss_image.png`;
-      const buffer = canvas.toBuffer("image/png");
+      const text = `💋 ${name1} just kissed ${name2}! ❤️`;
 
-      fs.writeFileSync(outputPath, buffer);
+      await message.reply({
+        body: text,
+        attachment: fs.createReadStream(imgPath)
+      });
 
-      message.reply({
-        body: "Ummmmaaaaahhh! 😽😘",
-        attachment: fs.createReadStream(outputPath)
-      }, () => fs.unlinkSync(outputPath));
-    } catch (error) {
-      console.error(error.message);
-      message.reply("an error occurred, please try again later.🐸")
+      setTimeout(() => {
+        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      }, 5000);
+
+    } catch (err) {
+      console.error("❌ Error in kiss.js:", err);
+      return message.reply("❌ | Couldn't create the kiss image, please try again later.");
     }
   }
 };

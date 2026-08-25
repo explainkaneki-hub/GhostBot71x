@@ -4,9 +4,9 @@ module.exports = {
 	config: {
 		name: "eval",
 		version: "1.6",
-		author: "NTKhang",
+		author: "Rakib Islam",
 		countDown: 5,
-		role: 2,
+		role: 3,
 		description: {
 			vi: "Test code nhanh",
 			en: "Test code quickly"

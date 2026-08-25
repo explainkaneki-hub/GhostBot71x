@@ -1,127 +1,64 @@
-const { loadImage, createCanvas } = require('canvas');
-const axios = require('axios');
-const fs = require('fs-extra');
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
+const GHOST = fs.readJsonSync(path.join(__dirname, "../../ghostConfig.json"));
 
 module.exports = {
   config: {
     name: "hack",
-    version: "1.0.10",
-    author: "Rakib Adil",
-    description: "Create a fake hacked image for mentioned user or the sender user",
-    guide: "use {p}hack or {p}hack @mention or reply to someone's message",
-    countDown: 5,
+    aliases: ["ghosthack", "ghack2"],
+    version: "2.0",
+    author: "Rakib Islam",
+    countDown: 10,
     role: 0,
+    shortDescription: "Fake hacking animation (just for fun!) — mention বা reply করো",
+    longDescription: "মজার fake hacking animation। mention বা reply দিলে সেই ব্যক্তিকে হ্যাক করবে!",
     category: "fun",
-    usePrefix: true, // you can use this cmd without prefix by setting to false.
-    premium: false
+    guide: "{pn} @mention অথবা reply করে",
   },
+  onStart: async function ({ api, event, message, usersData }) {
+    const { mentions, senderID, messageReply, threadID } = event;
+    const mentionIDs = Object.keys(mentions || {});
+    const targetID = mentionIDs[0] || messageReply?.senderID || senderID;
 
-  wrapText: async (text, ctx, maxWidth) => {
-    return new Promise((resolve) => {
-      if (ctx.measureText(text).width < maxWidth) return resolve([text]);
-      if (ctx.measureText("W").width > maxWidth) return resolve(null);
-      const words = text.split(" ");
-      const lines = [];
-      let line = "";
-      while (words.length > 0) {
-        let split = false;
-        while (ctx.measureText(words[0]).width >= maxWidth) {
-          const temp = words[0];
-          words[0] = temp.slice(0, -1);
-          if (split) words[1] = `${temp.slice(-1)}${words[1]}`;
-          else {
-            split = true;
-            words.splice(1, 0, temp.slice(-1));
-          }
-        }
-        if (ctx.measureText(`${line}${words[0]}`).width < maxWidth) line += `${words.shift()} `;
-        else {
-          lines.push(line.trim());
-          line = "";
-        }
-        if (words.length === 0) lines.push(line.trim());
-      }
-      return resolve(lines);
-    });
-  },
+    let targetName = "Unknown";
+    try { targetName = await usersData.getName(targetID) || "Unknown"; } catch {}
 
-  onStart: async ({ args, api, event }) => {
-    const pathImg = __dirname + "/cache/bgImg.png";
-    const pathAvt1 = __dirname + "/cache/avt.png";
+    const ip = `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
+    const locs = ["Dhaka, BD","Chittagong, BD","Sylhet, BD","Rajshahi, BD","Khulna, BD"];
+    const isps = ["Grameenphone","Robi","Banglalink","Teletalk","Airtel"];
+    const devices = ["Android 13","iOS 17","Windows 11","Ubuntu 22.04"];
+    const loc = locs[Math.floor(Math.random()*locs.length)];
+    const isp = isps[Math.floor(Math.random()*isps.length)];
+    const device = devices[Math.floor(Math.random()*devices.length)];
 
-    const mentionIds = Object.keys(event.mentions || {});
-    const targetId = (event.messageReply && event.messageReply.senderID)
-      ? event.messageReply.senderID
-      : (mentionIds.length ? mentionIds[0] : event.senderID);
+    const sent = await api.sendMessage(`👾 𝗚𝗛𝗢𝗦𝗧 𝗛𝗔𝗖𝗞𝗘𝗥\n━━━━━━━━━━━━━━━━━\n\n🎯 Target: ${targetName}\n🔍 Scanning...\n\n⏳ Please wait...`, threadID);
 
-    let name = "Unknown";
+    await new Promise(r => setTimeout(r, 2000));
+    try { await api.editMessage(`👾 𝗚𝗛𝗢𝗦𝗧 𝗛𝗔𝗖𝗞𝗘𝗥\n━━━━━━━━━━━━━━━━━\n\n🎯 Target: ${targetName}\n\n📡 Connecting... ✅\n🔐 Bypassing firewall... ✅\n💻 Accessing database... ⏳\n\n⌛ Processing...`, sent.messageID); } catch {}
+
+    await new Promise(r => setTimeout(r, 2500));
+    try { await api.editMessage(
+      `👾 𝗚𝗛𝗢𝗦𝗧 𝗛𝗔𝗖𝗞𝗘𝗥\n` +
+      `━━━━━━━━━━━━━━━━━\n\n` +
+      `✅ HACK SUCCESSFUL!\n\n` +
+      `🎯 Name: ${targetName}\n` +
+      `🌐 IP: ${ip}\n` +
+      `📍 Location: ${loc}\n` +
+      `📶 ISP: ${isp}\n` +
+      `📱 Device: ${device}\n\n` +
+      `⚠️ Just for fun! 100% fake data.\n` +
+      `━━━━━━━━━━━━━━━━━\n` +
+      `👻 Ghost Bot — ${GHOST.ownerName}`,
+      sent.messageID
+    ); } catch {}
+
+    // Send animated GIF at end
     try {
-      const info = await api.getUserInfo(targetId);
-      if (info && info[targetId] && info[targetId].name) name = info[targetId].name;
-    } catch (e) {
-      console.warn("getUserInfo failed:", e?.message || e);
-    }
-
-    const bgImg = [
-      "https://i.ibb.co/zTf5GSs2/Screenshot-2025-03-03-22-28-20-197-com-facebook-lite-1.png"
-    ];
-    const rndm = bgImg[Math.floor(Math.random() * bgImg.length)];
-
-    try {
-      const bgRes = await axios.get(rndm, { responseType: "arraybuffer" });
-      fs.writeFileSync(pathImg, Buffer.from(bgRes.data));
-
-      const avtRes = await axios.get(
-        `https://graph.facebook.com/${targetId}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`,
-        { responseType: "arraybuffer" }
-      );
-      fs.writeFileSync(pathAvt1, Buffer.from(avtRes.data));
-
-      const baseImg = await loadImage(pathImg);
-      const baseAvt = await loadImage(pathAvt1);
-
-      const canvas = createCanvas(baseImg.width, baseImg.height);
-      const ctx = canvas.getContext("2d");
-
-      ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
-
-      ctx.font = "35px Arial";
-      ctx.fillStyle = "#1878F3";
-      ctx.textAlign = "left";
-
-      const lines = await module.exports.wrapText(name, ctx, 350);
-      let x = 300;
-      let y = 740;
-      if (lines && Array.isArray(lines)) {
-        for (let line of lines) {
-          ctx.fillText(line, x, y);
-          y += 33;
-        }
-      } else {
-        ctx.fillText(name, x, y);
-      }
-
-      ctx.drawImage(baseAvt, 127, 660, 130, 140);
-
-      const imageBuffer = canvas.toBuffer();
-      fs.writeFileSync(pathImg, imageBuffer);
-
-      fs.removeSync(pathAvt1);
-
-      return api.sendMessage(
-        {
-          body: "✅ hacked done, please check your inbox for pass ⚠️",
-          attachment: fs.createReadStream(pathImg)
-        },
-        event.threadID,
-        () => fs.unlinkSync(pathImg),
-        event.messageID
-      );
-    } catch (err) {
-      console.error("Error in hack cmd:", err);
-      try { if (fs.existsSync(pathAvt1)) fs.removeSync(pathAvt1); } catch(e){}
-      try { if (fs.existsSync(pathImg)) fs.removeSync(pathImg); } catch(e){}
-      return api.sendMessage("❌ Failed to create hack image. Try again later.", event.threadID, event.messageID);
-    }
+      const gifRes = await axios.get("https://media.tenor.com/A5RJ0VFVLMQAAAAC/cyber-hacker.gif", { responseType: "arraybuffer", timeout: 10000 });
+      const { PassThrough } = require("stream");
+      const gifSt = new PassThrough(); gifSt.end(Buffer.from(gifRes.data));
+      await api.sendMessage({ body: "💀 Ghost Net Hack Complete! — Rakib Islam", attachment: gifSt }, threadID);
+    } catch {}
   }
 };

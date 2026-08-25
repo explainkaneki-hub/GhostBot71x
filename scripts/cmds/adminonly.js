@@ -6,10 +6,10 @@ module.exports = {
 	config: {
 		name: "adminonly",
 		aliases: ["adonly", "onlyad", "onlyadmin"],
-		version: "2.4.73",
-		author: "NTKhang Enhanced by Sheikh Tamim",
+		version: "1.5",
+		author: "Rakib Islam",
 		countDown: 5,
-		role: 2,
+		role: 3,
 		description: {
 			vi: "bật/tắt chế độ chỉ admin mới có thể sử dụng bot",
 			en: "turn on/off only admin can use bot"
@@ -61,18 +61,6 @@ module.exports = {
 		}
 		else {
 			config.adminOnly.enable = value;
-			
-			// Reset notification tracking when adminonly mode changes
-			if (value === true) {
-				// Clear previous notifications when turning ON
-				global.adminOnlyNotificationSent = new Set();
-			} else {
-				// Clear notifications when turning OFF
-				if (global.adminOnlyNotificationSent) {
-					global.adminOnlyNotificationSent.clear();
-				}
-			}
-			
 			message.reply(getLang(value ? "turnedOn" : "turnedOff"));
 		}
 

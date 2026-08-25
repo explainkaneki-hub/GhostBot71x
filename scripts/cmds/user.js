@@ -4,9 +4,9 @@ module.exports = {
 	config: {
 		name: "user",
 		version: "1.4",
-		author: "NTKhang",
+		author: "Rakib Islam",
 		countDown: 5,
-		role: 2,
+		role: 3,
 		description: {
 			vi: "Quản lý người dùng trong hệ thống bot",
 			en: "Manage users in bot system"
