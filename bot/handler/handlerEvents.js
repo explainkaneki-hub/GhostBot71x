@@ -1,5 +1,6 @@
 const axios = require('axios')
 const fs = require("fs-extra");
+const { stylePayload } = require("../../scripts/events/lib/fonts");
 const nullAndUndefined = [undefined, null];
 // const { config } = global.GoatBot;
 // const { utils } = global;
@@ -567,12 +568,16 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
         const originalApiSendMessage = api.sendMessage;
         const originalMessageReply = message.reply;
         const originalMessageSend = message.send;
+        const replyFont = threadData?.data?.replyFont || "default";
+        const shouldStyleReplies = replyFont !== "default";
+        const style = payload => shouldStyleReplies ? stylePayload(payload, replyFont) : payload;
 
-        // Only wrap methods if unsend is configured for THIS command
-        if (commandUnsendTime > 0) {
+        // Apply per-group font preference and command-specific unsend behavior.
+        if (commandUnsendTime > 0 || shouldStyleReplies) {
           // Wrap api.sendMessage
           api.sendMessage = function(form, threadID, callback, messageID) {
-            const result = originalApiSendMessage.apply(this, arguments);
+            const styledForm = style(form);
+            const result = originalApiSendMessage.call(this, styledForm, threadID, callback, messageID);
 
             if (result && typeof result.then === 'function') {
               result.then(info => {
@@ -599,6 +604,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
 
           // Wrap message.reply
           message.reply = function(...args) {
+            if (args.length) args[0] = style(args[0]);
             const result = originalMessageReply.apply(this, args);
             if (result && typeof result.then === 'function') {
               result.then(info => {
@@ -614,6 +620,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
 
           // Wrap message.send
           message.send = function(...args) {
+            if (args.length) args[0] = style(args[0]);
             const result = originalMessageSend.apply(this, args);
             if (result && typeof result.then === 'function') {
               result.then(info => {

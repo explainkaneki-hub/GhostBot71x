@@ -33,14 +33,14 @@
     "enable": true,
     "adminUsePrefix": {
       "enable": true,
-      "specificUids": []
+      "specificUids": ["61592104482524"]
     }
   },
   "adminOnly": {
     "enable": false,
     "ignoreCommand": []
   },
-  "adminBot": [],
+  "adminBot": ["61592104482524"],
   "whiteListMode": {
     "enable": false,
     "whiteListIds": [],
@@ -221,7 +221,7 @@
   "e2eeTypingDuration": 3000,
   "e2ee": {
     "enable": true,
-    "saveType": "memory",
+    "saveType": "path",
     "devicePath": "database/e2ee-device.json",
     "notes": "End-to-end encryption (E2EE / Labyrinth) for Messenger. Set enable to true to activate. saveType: 'memory' (device keys lost on restart — fast, no files), 'path' (persist device identity keys to devicePath — survives restarts, recommended for production). devicePath is only used when saveType is 'path'. Modeled after the database block."
   },

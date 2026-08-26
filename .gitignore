@@ -29,3 +29,6 @@ scripts/events/data/welcomeAttachment
 
 Fca_Database
 fca-config.json
+database/e2ee-device.json
+account.txt
+account.txt2
