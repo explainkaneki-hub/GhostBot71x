@@ -34,7 +34,7 @@
     "adminUsePrefix": {
       "enable": true,
       "specificUids": [
-        "61592104482524"
+        "61570489479327"
       ]
     }
   },
@@ -43,7 +43,7 @@
     "ignoreCommand": []
   },
   "adminBot": [
-    "61592104482524"
+    "61570489479327"
   ],
   "whiteListMode": {
     "enable": false,
