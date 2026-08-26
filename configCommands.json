@@ -29,11 +29,25 @@
     },
     "dhbc": {
       "reward": 1000
+    },
+    "botnick": {
+      "delayPerGroup": 250
+    },
+    "clown": {
+      "deltaNext": 5
+    },
+    "notstonk": {
+      "deltaNext": 5
     }
   },
   "envEvents": {
     "logsbot": {
       "allow": true
+    },
+    "adminUpdate": {
+      "autoUnsend": true,
+      "sendNoti": true,
+      "timeToUnsend": 10
     }
   }
 }

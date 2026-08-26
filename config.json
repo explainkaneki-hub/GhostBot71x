@@ -33,14 +33,18 @@
     "enable": true,
     "adminUsePrefix": {
       "enable": true,
-      "specificUids": ["61592104482524"]
+      "specificUids": [
+        "61592104482524"
+      ]
     }
   },
   "adminOnly": {
     "enable": false,
     "ignoreCommand": []
   },
-  "adminBot": ["61592104482524"],
+  "adminBot": [
+    "61592104482524"
+  ],
   "whiteListMode": {
     "enable": false,
     "whiteListIds": [],

@@ -1,6 +1,6 @@
 const fs = require("fs-extra");
 const { createCanvas } = require("canvas");
-const GIFEncoder = require("gifencoder");
+const GIFEncoder = require("gifencoderv2");
 
 module.exports = {
   config: {

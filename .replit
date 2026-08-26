@@ -2,7 +2,7 @@ hidden = [".config", "package-lock.json", ".gitignore"]
 run = "npm start"
 disableGuessImports = true
 entrypoint = "index.js"
-modules = ["nodejs-18:v8-11"]
+modules = ["nodejs-22"]
 
 [[hints]]
 regex = "Error \\[ERR_REQUIRE_ESM\\]"
@@ -40,10 +40,38 @@ pattern = "**/{*.js,*.jsx,*.ts,*.tsx,*.json}"
 start = "typescript-language-server --stdio"
 
 [deployment]
-run = ["sh", "-c", "node main.js"]
+run = ["sh", "-c", "node index.js"]
 deploymentTarget = "cloudrun"
 ignorePorts = true
 
 [[ports]]
 localPort = 3001
 externalPort = 80
+
+[[ports]]
+localPort = 3021
+externalPort = 3000
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm start"
+waitForPort = 3021
+
+[workflows.workflow.metadata]
+outputType = "console"

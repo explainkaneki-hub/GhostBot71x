@@ -1,4 +1,4 @@
-const DIG = require("discord-image-generation");
+const DIG = require("discord-image-generation-v2");
 const fs = require("fs-extra");
 
 module.exports = {

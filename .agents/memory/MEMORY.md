@@ -1,0 +1,1 @@
+- [E2EE runtime compatibility](e2ee-runtime.md) — ST-FCA encrypted messaging needs Node 22.19+.

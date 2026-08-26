@@ -1,5 +1,5 @@
 const { createCanvas, loadImage } = require("canvas");
-const GIFEncoder = require("gifencoder");
+const GIFEncoder = require("gifencoderv2");
 const fs = require("fs");
 const path = require("path");
 

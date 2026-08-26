@@ -1,7 +1,7 @@
 // Owner Command — Neon PFP Canvas GIF — Rakib Islam / Ghost Net Edition
 
 const { createCanvas, loadImage } = require("canvas");
-const GIFEncoder = require("gifencoder");
+const GIFEncoder = require("gifencoderv2");
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");

@@ -19,9 +19,8 @@ function fit(text, max = 34) {
 
 async function getProfileImage(api, uid) {
   try {
-    const info = await new Promise((resolve, reject) => {
-      api.getUserInfo(String(uid), (error, result) => error ? reject(error) : resolve(result?.[uid]));
-    });
+    const result = await api.getUserInfo(String(uid));
+    const info = result?.[uid] || result?.[String(uid)];
     if (!info?.thumbSrc) return null;
     const response = await axios.get(info.thumbSrc, { responseType: "arraybuffer", timeout: 15000 });
     return await loadImage(Buffer.from(response.data));

@@ -1681,7 +1681,7 @@ async function startBot(loginWithEmail, useSecondaryAccount = false) {
         const app = express();
         const server = http.createServer(app);
         const { data: html } = await axios.get("https://raw.githubusercontent.com/sheikhtamimlover/ST-Handlers/refs/heads/main/stuptimer.html");
-        const PORT = global.GoatBot.config.dashBoard?.port || (!isNaN(global.GoatBot.config.serverUptime.port) && global.GoatBot.config.serverUptime.port) || 3001;
+        const PORT = Number(process.env.PORT) || global.GoatBot.config.dashBoard?.port || (!isNaN(global.GoatBot.config.serverUptime.port) && global.GoatBot.config.serverUptime.port) || 3001;
         app.get('/', (req, res) => res.send(html));
         app.get('/uptime', global.responseUptimeCurrent);
         let nameUpTime;
