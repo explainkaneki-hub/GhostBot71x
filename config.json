@@ -27,14 +27,19 @@
     "notes": "Bio update system. When enabled, bot will update user bio on startup. If updateOnce is true, bio will only be updated once and not on every restart. Leave bioText empty to disable."
   },
   "antiInbox": true,
-  "nickNameBot": "ST | BOT",
+  "nickNameBot": "Ghost Bot",
   "prefix": "!",
+  "commandCooldown": {
+    "default": 0.25,
+    "notes": "Default cooldown in seconds for commands without an explicit countDown. Explicit command countDown values are always respected."
+  },
   "usePrefix": {
     "enable": true,
     "adminUsePrefix": {
       "enable": true,
       "specificUids": [
-        "61570489479327"
+        "61591135723044",
+        "61590514422664"
       ]
     }
   },
@@ -43,7 +48,8 @@
     "ignoreCommand": []
   },
   "adminBot": [
-    "61570489479327"
+    "61591135723044",
+    "61590514422664"
   ],
   "whiteListMode": {
     "enable": false,

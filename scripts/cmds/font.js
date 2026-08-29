@@ -1,3 +1,5 @@
+const SUPPORTED_FONTS = new Set(["default", "bold", "mono", "smallcaps"]);
+
 module.exports = {
   config: {
     name: "font",
@@ -11,7 +13,7 @@ module.exports = {
   onStart: async ({ args, message, threadsData, event }) => {
     const style = String(args[0] || "").toLowerCase();
     if (!style || style === "list") return message.reply("Available fonts: default, bold, mono, smallcaps\nUse: font bold");
-    if (!STYLES[style]) return message.reply("Unknown font. Choose: default, bold, mono, smallcaps");
+    if (!SUPPORTED_FONTS.has(style)) return message.reply("Unknown font. Choose: default, bold, mono, smallcaps");
     const thread = await threadsData.get(event.threadID);
     const data = thread.data || {};
     data.replyFont = style;

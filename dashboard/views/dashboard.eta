@@ -225,7 +225,7 @@
                         <div class="page-header">
                                 <div>
                                         <h1 class="page-title">STAI Agent</h1>
-                                        <p class="page-subtitle">Project-aware dashboard chat for ST BOT.</p>
+                                        <p class="page-subtitle">Project-aware dashboard chat for Ghost Bot.</p>
                                 </div>
                                 <div style="display:flex;gap:8px">
                                         <button class="btn btn-ghost" id="staiClearBtn">

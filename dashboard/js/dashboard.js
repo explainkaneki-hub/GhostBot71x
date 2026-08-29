@@ -1,5 +1,5 @@
 /* ============================================================
-   ST BOT v2.4.79 — Dashboard frontend
+   Ghost Bot — Dashboard frontend
    ============================================================ */
 
 const $  = (s, r = document) => r.querySelector(s);

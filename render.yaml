@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: ghost-bot
+    env: node
+    buildCommand: npm ci --omit=dev --no-audit --no-fund
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22.22.0"

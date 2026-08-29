@@ -531,10 +531,10 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
         client.countDown[commandName] = {};
       const timestamps = client.countDown[commandName];
       let getCoolDown = command.config.countDown;
-      if (!getCoolDown && getCoolDown != 0 || isNaN(getCoolDown))
-        getCoolDown = 1;
+      if (getCoolDown === undefined || getCoolDown === null || isNaN(getCoolDown))
+        getCoolDown = Number(config.commandCooldown?.default ?? 0.25);
       const cooldownCommand = getCoolDown * 1000;
-      if (timestamps[effectiveSenderID]) {
+      if (cooldownCommand > 0 && timestamps[effectiveSenderID]) {
         const expirationTime = timestamps[effectiveSenderID] + cooldownCommand;
         if (dateNow < expirationTime)
           return await message.reply(heTxt("waitingForCommand", ((expirationTime - dateNow) / 1000).toString().slice(0, 3)));
@@ -542,6 +542,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
       // ——————————————— RUN COMMAND ——————————————— //
       const time = getTime("DD/MM/YYYY HH:mm:ss");
       isUserCallCommand = true;
+      let restoreCommandMethods = null;
       try {
         // analytics command call
         (async () => {
@@ -571,24 +572,21 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
         const replyFont = threadData?.data?.replyFont || "default";
         const shouldStyleReplies = replyFont !== "default";
         const style = payload => shouldStyleReplies ? stylePayload(payload, replyFont) : payload;
+        restoreCommandMethods = () => {
+          api.sendMessage = originalApiSendMessage;
+          message.reply = originalMessageReply;
+          message.send = originalMessageSend;
+          restoreCommandMethods = null;
+        };
 
         // Apply per-group font preference and command-specific unsend behavior.
         if (commandUnsendTime > 0 || shouldStyleReplies) {
           // Wrap api.sendMessage
           api.sendMessage = function(form, threadID, callback, messageID) {
             const styledForm = style(form);
-            const result = originalApiSendMessage.call(this, styledForm, threadID, callback, messageID);
-
-            if (result && typeof result.then === 'function') {
-              result.then(info => {
-                if (info && info.messageID) {
-                  setTimeout(() => {
-                    api.unsendMessage(info.messageID).catch(() => {});
-                  }, commandUnsendTime);
-                }
-              }).catch(() => {});
-            } else if (typeof callback === 'function') {
-              const wrappedCallback = (err, info) => {
+            let callbackToUse = callback;
+            if (commandUnsendTime > 0 && typeof callback === "function") {
+              callbackToUse = (err, info) => {
                 if (!err && info && info.messageID) {
                   setTimeout(() => {
                     api.unsendMessage(info.messageID).catch(() => {});
@@ -596,7 +594,17 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
                 }
                 callback(err, info);
               };
-              return originalApiSendMessage.call(this, form, threadID, wrappedCallback, messageID);
+            }
+            const result = originalApiSendMessage.call(this, styledForm, threadID, callbackToUse, messageID);
+
+            if (commandUnsendTime > 0 && result && typeof result.then === 'function') {
+              result.then(info => {
+                if (info && info.messageID) {
+                  setTimeout(() => {
+                    api.unsendMessage(info.messageID).catch(() => {});
+                  }, commandUnsendTime);
+                }
+              }).catch(() => {});
             }
 
             return result;
@@ -606,7 +614,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
           message.reply = function(...args) {
             if (args.length) args[0] = style(args[0]);
             const result = originalMessageReply.apply(this, args);
-            if (result && typeof result.then === 'function') {
+            if (commandUnsendTime > 0 && result && typeof result.then === 'function') {
               result.then(info => {
                 if (info && info.messageID) {
                   setTimeout(() => {
@@ -622,7 +630,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
           message.send = function(...args) {
             if (args.length) args[0] = style(args[0]);
             const result = originalMessageSend.apply(this, args);
-            if (result && typeof result.then === 'function') {
+            if (commandUnsendTime > 0 && result && typeof result.then === 'function') {
               result.then(info => {
                 if (info && info.messageID) {
                   setTimeout(() => {
@@ -658,14 +666,14 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
         });
 
         // Restore original methods after command execution
-        api.sendMessage = originalApiSendMessage;
-        message.reply = originalMessageReply;
-        message.send = originalMessageSend;
+        restoreCommandMethods();
 
         timestamps[effectiveSenderID] = dateNow;
         log.info("CALL COMMAND", `${commandName} | ${userData.name} | ${effectiveSenderID} | ${threadID} | ${args.join(" ")}`);
       }
       catch (err) {
+        if (restoreCommandMethods)
+          restoreCommandMethods();
         const accountInfo = global.GoatBot.currentAccount ? ` [Account: ${global.GoatBot.currentAccount}]` : '';
         log.err("CALL COMMAND", `An error occurred when calling the command ${commandName}${accountInfo}`, err);
         return await message.reply(heTxt("errorOccurred", time, commandName, removeHomeDir(err.stack ? err.stack.split("\n").slice(0, 5).join("\n") : JSON.stringify(err, null, 2))));

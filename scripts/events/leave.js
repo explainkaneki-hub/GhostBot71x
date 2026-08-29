@@ -16,10 +16,12 @@ module.exports = {
     if (uid === String(api.getCurrentUserID())) return;
     const threadData = await threadsData.get(event.threadID).catch(() => ({}));
     if (threadData?.settings?.sendLeaveMessage === false || threadData?.data?.premiumHud === false) return;
-    const groupName = safe(threadData?.threadName, `Group ${event.threadID}`);
-    const members = Array.isArray(threadData?.members)
-      ? Math.max(0, threadData.members.length - 1)
-      : "?";
+    let liveInfo = {};
+    try {
+      if (!String(event.threadID).includes("@")) liveInfo = await api.getThreadInfo(event.threadID);
+    } catch (_) {}
+    const groupName = safe(liveInfo.threadName || threadData?.threadName, `Group ${event.threadID}`);
+    const members = Number(liveInfo.participantIDs?.length || threadData?.members?.length || 0) || "?";
     let name = `Member ${uid}`;
     try { name = safe(await usersData.getName(uid), name); } catch (_) {}
     const now = new Date();
@@ -28,7 +30,7 @@ module.exports = {
     let filePath;
     try {
       filePath = await createHudCard("leave", {
-        uid, name, groupName, members: String(members), time, date,
+        uid, name, groupName, memberNumber: "—", members: String(members), time, date,
         message: `${name} has departed. The group wishes you well.`
       }, api);
       await api.sendMessage({
