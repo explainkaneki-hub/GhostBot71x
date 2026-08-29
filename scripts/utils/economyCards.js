@@ -85,4 +85,4 @@ async function leaderboardCard(users, usersData, title = "TOP 15", metric = "SCO
   return file;
 }
 
-module.exports = { formatMoney, balanceCard, leaderboardCard };
+module.exports = { formatMoney, fullMoney: formatMoney, balanceCard, leaderboardCard };

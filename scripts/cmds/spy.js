@@ -30,7 +30,7 @@ module.exports.onStart = async function ({ api, event, args }) {
 
   let loadingMsg;
   try {
-    loadingMsg = await api.sendMessage("🔍 Scanning network... Generating Cyberpunk Intel Card...", threadID, messageID);
+    loadingMsg = await api.sendMessage("🔍 Scanning network... Generating Cyberpunk Intel Card...", threadID, () => {}, messageID);
   } catch (e) {}
 
   try {
@@ -188,6 +188,6 @@ module.exports.onStart = async function ({ api, event, args }) {
     if (loadingMsg && loadingMsg.messageID) {
       api.unsendMessage(loadingMsg.messageID);
     }
-    return api.sendMessage("❌ ইউজারের সাইবারপাঙ্ক ইনফো কার্ড তৈরি করতে ব্যর্থ হয়েছে!", threadID, messageID);
+    return api.sendMessage("❌ ইউজারের সাইবারপাঙ্ক ইনফো কার্ড তৈরি করতে ব্যর্থ হয়েছে!", threadID, () => {}, messageID);
   }
 };

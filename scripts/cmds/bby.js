@@ -216,7 +216,7 @@ module.exports.onChat = async ({ api, event }) => {
   try {
     const message = (event.body || "").toLowerCase().trim();
     if (!message && (!event.attachments || event.attachments.length === 0)) return;
-    
+
     // যদি কেউ বটের মেসেজে রিপ্লাই দেয়, তা onReply হ্যান্ডেল করবে, এখানে স্কিপ হবে
     if (event.type === "message_reply") return;
 
@@ -240,7 +240,7 @@ module.exports.onChat = async ({ api, event }) => {
     // যদি শুধু Trigger শব্দটাই পাঠায় (যেমন: "baby", "bot", "sona")
     if (!userText && (!event.attachments || event.attachments.length === 0)) {
       const randomMsg = [
-        "Bolo baby", "I love you", "ki bolba taratari bolo", 
+        "Bolo baby", "I love you", "ki bolba taratari bolo",
         "আমাকে ডাকলে, আমি কিন্তূ কিস করে দেবো😘", "বলো কি বলবা?🤭", "Eto na deke amar boss Rakib re ekta gf khuje de😾"
       ];
       const randReply = randomMsg[Math.floor(Math.random() * randomMsg.length)];

@@ -1,1 +1,2 @@
 - [E2EE runtime compatibility](e2ee-runtime.md) — ST-FCA encrypted messaging needs Node 22.19+.
+- [Reply wrapper safety](reply-wrapper-safety.md) — message styling/unsend wrappers must preserve callbacks and always restore after command errors.
