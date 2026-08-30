@@ -95,37 +95,70 @@ function enhanceImageUrl(source) {
 }
 
 function imageCandidates(profile, uid) {
-  const values = [
-    profile?.profilePic,
-    profile?.profilePicture,
-    profile?.bigImageSrc,
-    profile?.largeProfilePicture,
-    profile?.thumbSrc,
-    profile?.avatar,
-    profile?.imageUrl,
-    profile?.profileUrl
+  const sources = [profile, profile?.data, profile?.profile, profile?.user]
+    .filter(value => value && typeof value === "object");
+  const imageFields = [
+    "thumbSrc",
+    "profilePic",
+    "profilePicture",
+    "bigImageSrc",
+    "largeProfilePicture",
+    "profile_picture",
+    "avatar",
+    "imageUrl",
+    "photoUrl"
   ];
+  const values = sources.flatMap(source => imageFields.map(field => source[field]));
   const urls = values
     .map(value => typeof value === "string" ? value : value?.uri || value?.url || value?.source)
     .filter(value => typeof value === "string" && /^https?:\/\//i.test(value))
     .filter(value => /\/picture|fbcdn|fbsbx|scontent|profile[_-]?pic|avatar|image/i.test(value))
-    .flatMap(value => [enhanceImageUrl(value), value]);
+    // Keep signed Facebook URLs untouched first; changing their query string
+    // can invalidate the signature before the CDN request is made.
+    .flatMap(value => [value, enhanceImageUrl(value)]);
+  const profileUrl = sources
+    .map(source => source.profileUrl || source.profileURL)
+    .find(value => typeof value === "string" && /\/picture|fbcdn|fbsbx|scontent|profile[_-]?pic/i.test(value));
+  if (profileUrl) urls.push(profileUrl);
   if (uid) urls.push(`https://graph.facebook.com/${encodeURIComponent(uid)}/picture?type=large&width=1024&height=1024`);
   return [...new Set(urls)];
 }
 
-async function loadAvatar(profile, uid) {
+function getSessionCookie(api) {
+  try {
+    const appState = typeof api?.getAppState === "function" ? api.getAppState() : [];
+    if (!Array.isArray(appState)) return "";
+    return appState
+      .filter(item => item && item.key && item.value)
+      .map(item => `${item.key}=${item.value}`)
+      .join("; ");
+  } catch (_) {
+    return "";
+  }
+}
+
+async function loadAvatar(profile, uid, requestOptions = {}) {
   for (const url of imageCandidates(profile, uid)) {
     try {
       const response = await axios.get(url, {
         responseType: "arraybuffer",
         timeout: 15000,
         maxContentLength: 12 * 1024 * 1024,
-        headers: { "User-Agent": "Mozilla/5.0" }
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Accept: "image/avif,image/webp,image/apng,image/jpeg,image/png,*/*;q=0.8",
+          Referer: "https://www.facebook.com/",
+          ...(requestOptions.cookie ? { Cookie: requestOptions.cookie } : {})
+        }
       });
       const input = Buffer.from(response.data);
       const metadata = await sharp(input).metadata();
       if (!metadata.format || !metadata.width || !metadata.height || input.length < 1000) continue;
+      const stats = await sharp(input).stats();
+      const rgb = stats.channels.slice(0, 3);
+      const isWhitePlaceholder = rgb.length === 3
+        && rgb.every(channel => channel.min >= 180 && channel.mean >= 215 && channel.max - channel.min <= 56);
+      if (isWhitePlaceholder) continue;
       const normalized = await sharp(input)
         .rotate()
         .resize(1024, 1024, {
@@ -150,7 +183,7 @@ async function fetchAvatar(api, uid, profileHint = {}) {
     const result = await api.getUserInfo(uid);
     Object.assign(profile, result?.[uid] || result?.[String(uid)] || result || {});
   } catch (_) {}
-  return loadAvatar(profile, uid);
+  return loadAvatar(profile, uid, { cookie: getSessionCookie(api) });
 }
 
 async function fetchProfile(api, usersData, uid) {
@@ -166,7 +199,7 @@ async function fetchProfile(api, usersData, uid) {
     }
   } catch (_) {}
 
-  const avatar = await loadAvatar(profile, uid);
+  const avatar = await loadAvatar(profile, uid, { cookie: getSessionCookie(api) });
   return { ...profile, userID: uid, avatar };
 }
 
