@@ -892,7 +892,7 @@ function stopListening(keyListen) {
 
 async function startBot(loginWithEmail, useSecondaryAccount = false) {
   console.log("");
-  global.utils.banner.section("LOGGING IN", { accent: "#7dd3fc", subtitle: "Establishing Facebook session…" });
+  global.utils.banner.section("GHOST BOT // SECURE BOOT", { accent: "#7dd3fc", subtitle: "Rakib Islam • Establishing secure Facebook session…" });
 
   const twoIdMode = global.GoatBot.config.twoIdMode;
 
@@ -1088,22 +1088,22 @@ async function startBot(loginWithEmail, useSecondaryAccount = false) {
 
       global.GoatBot.fcaApi = api;
       global.GoatBot.botID = api.getCurrentUserID();
-      log.info("LOGIN FACEBOOK", getText('login', 'loginSuccess'));
+      log.info("LOGIN FACEBOOK", "Ghost Bot session authenticated • Rakib Islam");
 
       // ─── E2EE connect with status logging ──────────────────────────────────
       if (global.GoatBot.config.e2ee && global.GoatBot.config.e2ee.enable === true) {
         if (typeof api.connectE2EE === 'function') {
-          log.info("E2EE", "Connecting to E2EE (Labyrinth) bridge…");
+          log.info("E2EE", "Ghost Bot secure bridge handshake • Rakib Islam");
           api.connectE2EE(function (err, evt) {
             if (err) return;
             if (!evt) return;
             if (evt.type === "e2ee_connected")
-              log.info("E2EE", "✅ E2EE bridge connected");
+              log.info("E2EE", "✅ Ghost Bot secure bridge connected");
             else if (evt.type === "e2ee_ready")
-              log.info("E2EE", "🔑 E2EE ready — device keys established");
+              log.info("E2EE", "🔑 Ghost Bot keys established — encrypted channel ready");
             else if (evt.type === "e2ee_fully_ready") {
               global.GoatBot.e2eeFullyReady = true;
-              log.info("E2EE", "🟢 E2EE fully ready — encrypted messaging active");
+              log.info("E2EE", "🟢 Ghost Bot encrypted messaging active • Rakib Islam");
               global.GoatBot.sendPendingE2eeRestartNotifications(api).catch(function (err) {
                 log.warn("E2EE RESTART", "Pending restart notification error:", err && err.message ? err.message : err);
               });
@@ -1143,7 +1143,7 @@ async function startBot(loginWithEmail, useSecondaryAccount = false) {
       // Auto remove suspicious account warning - do this before setting up listeners
       try {
         await api.removeSuspiciousAccount();
-        log.info("AUTO REMOVE SUSPICIOUS", "Suspicious account warning removed successfully");
+        log.info("AUTO REMOVE SUSPICIOUS", "Ghost Bot session shield cleared successfully");
         // Wait a bit for Facebook to process the removal
         await sleep(2000);
 
@@ -1153,7 +1153,7 @@ async function startBot(loginWithEmail, useSecondaryAccount = false) {
           changeFbStateByCode = true;
           writeFileSync(dirAccount, JSON.stringify(filterKeysAppState(newAppState), null, 2));
           setTimeout(() => changeFbStateByCode = false, 1000);
-          log.info("AUTO REMOVE SUSPICIOUS", "Session refreshed after suspicious account removal");
+          log.info("AUTO REMOVE SUSPICIOUS", "Ghost Bot session refreshed and protected");
         }
       } catch (err) {
         // Only log warning if it's not a critical error
@@ -1166,7 +1166,7 @@ async function startBot(loginWithEmail, useSecondaryAccount = false) {
 
       global.botID = api.getCurrentUserID();
       console.log("");
-      global.utils.banner.section("BOT INFO", { accent: "#c4b5fd", subtitle: "Runtime details for this session" });
+      global.utils.banner.section("GHOST BOT // TELEMETRY", { accent: "#c4b5fd", subtitle: "Rakib Islam • Runtime details for this session" });
       log.info("NODE VERSION", process.version);
       log.info("PROJECT VERSION", currentVersion);
       log.info("BOT ID", `${global.botID} - ${await getName(global.botID)}`);
@@ -1312,7 +1312,7 @@ async function startBot(loginWithEmail, useSecondaryAccount = false) {
       // ——————————————————— DASHBOARD ——————————————————— //
       if (global.GoatBot.config.dashBoard?.enable == true && dashBoardIsRunning == false) {
         console.log("");
-        global.utils.banner.section("DASHBOARD", { accent: "#7dd3fc", subtitle: "Starting the web control panel…" });
+        global.utils.banner.section("GHOST BOT // CONTROL DECK", { accent: "#7dd3fc", subtitle: "Rakib Islam • Starting the web control panel…" });
         try {
           await require("../../dashboard/app.js")(api);
           log.info("DASHBOARD", getText('login', 'openDashboardSuccess'));
@@ -1324,7 +1324,7 @@ async function startBot(loginWithEmail, useSecondaryAccount = false) {
       }
       // ———————————————————— ADMIN BOT ———————————————————— //
       console.log("");
-      global.utils.banner.section("ADMIN BOTS", { accent: "#fda47a", subtitle: "Authorized administrator accounts" });
+      global.utils.banner.section("GHOST BOT // TRUSTED ADMINS", { accent: "#fda47a", subtitle: "Rakib Islam • Authorized administrator accounts" });
       let i = 0;
       const adminBot = global.GoatBot.config.adminBot
         .filter(item => !isNaN(item))
@@ -1338,7 +1338,7 @@ async function startBot(loginWithEmail, useSecondaryAccount = false) {
           log.master("ADMINBOT", `[${++i}] ${uid}`);
         }
       }
-      log.master("SUCCESS", getText('login', 'runBot'));
+       log.master("SUCCESS", "Ghost Bot online • Rakib Islam branding active • ready for messages");
       log.master("LOAD TIME", `${convertTime(Date.now() - global.GoatBot.startTime)}`);
 
       // ——————————————————— FETCH OWNER UIDS AND SET IN MEMORY ———————————————————— //

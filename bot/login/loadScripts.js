@@ -100,7 +100,15 @@ module.exports = async function (api, threadModel, userModel, dashBoardModel, gl
         for (const folderModules of folders) {
                 const headline = folderModules === "cmds" ? "LOAD COMMANDS" : "LOAD EVENTS";
                 console.log("");
-                global.utils.banner.section(headline, { accent: "#7dd3fc", subtitle: folderModules === "cmds" ? "Discovering and registering bot commands" : "Discovering and registering event handlers" });
+                global.utils.banner.section(
+                        folderModules === "cmds" ? "GHOST BOT // COMMAND MATRIX" : "GHOST BOT // EVENT MATRIX",
+                        {
+                                accent: folderModules === "cmds" ? "#7dd3fc" : "#c4b5fd",
+                                subtitle: folderModules === "cmds"
+                                        ? "Rakib Islam • Registering command modules"
+                                        : "Rakib Islam • Registering event modules"
+                        }
+                );
 
                 if (folderModules === "cmds") {
                         text = "command";
@@ -259,7 +267,7 @@ module.exports = async function (api, threadModel, userModel, dashBoardModel, gl
                         } catch (error) {
                                 commandError.push({ name: file, error });
                         }
-                        loading.info("LOADED", `${colors.green(commandLoadSuccess)}${commandError.length ? `, ${colors.red(commandError.length)}` : ""}`);
+                        loading.info("LOADED", `${colors.green(commandLoadSuccess)}${commandError.length ? `, ${colors.red(commandError.length)}` : ""}  •  Ghost Bot / Rakib Islam`);
                 }
 
                 console.log("\r");

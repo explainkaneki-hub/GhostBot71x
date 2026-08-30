@@ -37,6 +37,7 @@ function pad(text, width, align = "left") {
 function section(title, opts = {}) {
         const accent   = opts.accent   || ACCENTS.primary;
         const subtitle = opts.subtitle || "";
+        const brand    = opts.brand === false ? "" : (opts.brand || "👻 GHOST BOT  //  RAKIB ISLAM");
         const width    = Math.min(Math.max(opts.width || 64, 40), 96);
         const symbol   = opts.symbol   || "◆";
 
@@ -45,6 +46,10 @@ function section(title, opts = {}) {
         const bottom = colors.hex(accent, "╰" + "─".repeat(innerW) + "╯");
 
         const lines = [top];
+        if (brand) {
+                const brandText = " " + colors.bold(colors.hex(accent, brand));
+                lines.push(colors.hex(accent, "│") + pad(brandText, innerW) + colors.hex(accent, "│"));
+        }
         if (subtitle) {
                 const padded = pad(" " + colors.hex(ACCENTS.muted, subtitle), innerW);
                 lines.push(colors.hex(accent, "│") + padded + colors.hex(accent, "│"));

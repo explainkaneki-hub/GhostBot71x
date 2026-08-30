@@ -5,14 +5,14 @@ const { log, createOraDots, getText } = global.utils;
 module.exports = async function (api, createLine) {
         // ———————————————————— LOAD DATA ———————————————————— //
         console.log("");
-        global.utils.banner.section("DATABASE", { accent: "#86efac", subtitle: "Loading thread, user and dashboard data" });
+        global.utils.banner.section("GHOST BOT // DATA VAULT", { accent: "#86efac", subtitle: "Rakib Islam • Loading thread, user and dashboard data" });
         const controller = await require(path.join(__dirname, '..', '..', 'database/controller/index.js'))(api); // data is loaded here
         const { threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, sequelize, bankData, staiHistoryData } = controller;
         log.info('DATABASE', getText('loadData', 'loadThreadDataSuccess', global.db.allThreadData.filter(t => t.threadID.toString().length > 15).length));
         log.info('DATABASE', getText('loadData', 'loadUserDataSuccess', global.db.allUserData.length));
         if (api && global.GoatBot.config.database.autoSyncWhenStart == true) {
                 console.log("");
-                global.utils.banner.section("AUTO SYNC", { accent: "#c4b5fd", subtitle: "Refreshing thread data from Facebook" });
+                global.utils.banner.section("GHOST BOT // AUTO SYNC", { accent: "#c4b5fd", subtitle: "Rakib Islam • Refreshing thread data from Facebook" });
                 const spin = createOraDots(getText('loadData', 'refreshingThreadData'));
                 try {
                         api.setOptions({

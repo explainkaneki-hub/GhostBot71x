@@ -1331,8 +1331,8 @@ module.exports = async (api) => {
         }
 
         await server.listen(PORT, '0.0.0.0');
-        utils.log.info("DASHBOARD", `Dashboard is running: ${dashBoardUrl}`);
-        utils.log.info("DASHBOARD", `Server listening on 0.0.0.0:${PORT}`);
+        utils.log.info("DASHBOARD", `Ghost Bot Control Deck online • Rakib Islam • ${dashBoardUrl}`);
+        utils.log.info("DASHBOARD", `Ghost Bot port link stable • 0.0.0.0:${PORT}`);
 
         if (config.serverUptime.socket.enable == true)
                 require("../bot/login/socketIO.js")(server);
