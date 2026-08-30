@@ -29,6 +29,10 @@
   "antiInbox": true,
   "nickNameBot": "Ghost Bot",
   "prefix": "!",
+  "alternatePrefixes": [
+    "."
+  ],
+  "defaultReplyFont": "mono",
   "commandCooldown": {
     "default": 0.25,
     "notes": "Default cooldown in seconds for commands without an explicit countDown. Explicit command countDown values are always respected."

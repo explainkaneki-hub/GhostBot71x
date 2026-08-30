@@ -355,7 +355,10 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
     if (typeof threadData?.settings?.hideNotiMessage == "object")
       hideNotiMessage = threadData.settings.hideNotiMessage;
 
-    const prefix = isE2EEThread ? config.prefix : getPrefix(threadID);
+    let prefix = isE2EEThread ? config.prefix : getPrefix(threadID);
+    const defaultReplyFont = config.defaultReplyFont || "mono";
+    const threadReplyFont = threadData?.data?.replyFont || defaultReplyFont;
+    const styledSystemReply = payload => message.reply(stylePayload(payload, threadReplyFont));
     const userRole = getRole(threadData, effectiveSenderID);
 
     const parameters = {
@@ -383,7 +386,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
 
     function createMessageSyntaxError(commandName) {
       message.SyntaxError = async function () {
-        return await message.reply(heTxt("commandSyntaxError", prefix, commandName));
+        return await styledSystemReply(heTxt("commandSyntaxError", prefix, commandName));
       };
     }
 
@@ -407,11 +410,16 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
       let commandName = "";
       let command = null;
       let usedPrefix = false;
+      let activePrefix = prefix;
 
       // Check if message starts with prefix
-      if (body.startsWith(prefix)) {
+      const acceptedPrefixes = [prefix, ...(Array.isArray(config.alternatePrefixes) ? config.alternatePrefixes : [])]
+        .filter((value, index, values) => typeof value === "string" && value && values.indexOf(value) === index);
+      const matchedPrefix = acceptedPrefixes.find(value => body.startsWith(value));
+      if (matchedPrefix) {
         usedPrefix = true;
-        args = body.slice(prefix.length).trim().split(/ +/);
+        activePrefix = matchedPrefix;
+        args = body.slice(matchedPrefix.length).trim().split(/ +/);
         commandName = args.shift().toLowerCase();
       } else {
         // Check if we should process without prefix
@@ -429,8 +437,8 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
           if (!hideNotiMessage.commandNotFound)
             return await message.reply(
               commandName ?
-                heTxt("commandNotFound", commandName, prefix) :
-                heTxt("commandNotFound2", prefix)
+                stylePayload(heTxt("commandNotFound", commandName, activePrefix), threadReplyFont) :
+                stylePayload(heTxt("commandNotFound2", activePrefix), threadReplyFont)
             );
         }
         return;
@@ -518,9 +526,9 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
       if (needRole > userRole) {
         if (!hideNotiMessage.needRoleToUseCmd) {
           if (needRole == 1)
-            return await message.reply(heTxt("onlyAdmin", commandName));
+            return await styledSystemReply(heTxt("onlyAdmin", commandName));
           else if (needRole == 2)
-            return await message.reply(heTxt("onlyAdminBot2", commandName));
+            return await styledSystemReply(heTxt("onlyAdminBot2", commandName));
         }
         else {
           return true;
@@ -537,7 +545,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
       if (cooldownCommand > 0 && timestamps[effectiveSenderID]) {
         const expirationTime = timestamps[effectiveSenderID] + cooldownCommand;
         if (dateNow < expirationTime)
-          return await message.reply(heTxt("waitingForCommand", ((expirationTime - dateNow) / 1000).toString().slice(0, 3)));
+          return await styledSystemReply(heTxt("waitingForCommand", ((expirationTime - dateNow) / 1000).toString().slice(0, 3)));
       }
       // ——————————————— RUN COMMAND ——————————————— //
       const time = getTime("DD/MM/YYYY HH:mm:ss");
@@ -554,7 +562,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
         })();
 
         createMessageSyntaxError(commandName);
-        const getText2 = createGetText2(langCode, `${process.cwd()}/languages/cmds/${langCode}.js`, prefix, command);
+        const getText2 = createGetText2(langCode, `${process.cwd()}/languages/cmds/${langCode}.js`, activePrefix, command);
         if (command.onStart && typeof command.onStart != "function")
           throw new Error('Function onStart must be a function!');
         if (command.ST && typeof command.ST != "function")
@@ -569,7 +577,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
         const originalApiSendMessage = api.sendMessage;
         const originalMessageReply = message.reply;
         const originalMessageSend = message.send;
-        const replyFont = threadData?.data?.replyFont || "default";
+        const replyFont = threadData?.data?.replyFont || defaultReplyFont;
         const shouldStyleReplies = replyFont !== "default";
         const style = payload => shouldStyleReplies ? stylePayload(payload, replyFont) : payload;
         restoreCommandMethods = () => {
@@ -720,13 +728,13 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
           };
         }
 
-        command.onChat({
+        Promise.resolve().then(() => command.onChat({
           ...parameters,
           isUserCallCommand,
           args,
           commandName,
           getLang: getText2
-        })
+        }))
           .then(async (handler) => {
             if (typeof handler == "function") {
               if (isBannedOrOnlyAdmin(userData, threadData, effectiveSenderID, threadID, isGroup, commandName, message, langCode))
@@ -736,7 +744,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
                 log.info("onChat", `${commandName} | ${userData.name} | ${effectiveSenderID} | ${threadID} | ${args.join(" ")}`);
               }
               catch (err) {
-                await message.reply(heTxt("errorOccurred2", time, commandName, removeHomeDir(err.stack ? err.stack.split("\n").slice(0, 5).join("\n") : JSON.stringify(err, null, 2))));
+                await styledSystemReply(heTxt("errorOccurred2", time, commandName, removeHomeDir(err.stack ? err.stack.split("\n").slice(0, 5).join("\n") : JSON.stringify(err, null, 2))));
               }
             }
           })
@@ -778,12 +786,12 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
           };
         }
 
-        command.onAnyEvent({
+        Promise.resolve().then(() => command.onAnyEvent({
           ...parameters,
           args,
           commandName,
           getLang: getText2
-        })
+        }))
           .then(async (handler) => {
             if (typeof handler == "function") {
               try {
@@ -791,7 +799,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
                 log.info("onAnyEvent", `${commandName} | ${effectiveSenderID} | ${userData.name} | ${threadID}`);
               }
               catch (err) {
-                message.reply(heTxt("errorOccurred7", time, commandName, removeHomeDir(err.stack ? err.stack.split("\n").slice(0, 5).join("\n") : JSON.stringify(err, null, 2))));
+                styledSystemReply(heTxt("errorOccurred7", time, commandName, removeHomeDir(err.stack ? err.stack.split("\n").slice(0, 5).join("\n") : JSON.stringify(err, null, 2))));
                 log.err("onAnyEvent", `An error occurred when calling the command onAnyEvent ${commandName}`, err);
               }
             }
@@ -1178,12 +1186,12 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
           };
         }
 
-        command.onEvent({
+        Promise.resolve().then(() => command.onEvent({
           ...parameters,
           args,
           commandName,
           getLang: getText2
-        })
+        }))
           .then(async (handler) => {
             if (typeof handler == "function") {
               try {
@@ -1191,7 +1199,7 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
                 log.info("onEvent", `${commandName} | ${author} | ${userData?.name || 'Unknown'} | ${threadID}`);
               }
               catch (err) {
-                message.reply(heTxt("errorOccurred6", time, commandName, removeHomeDir(err.stack ? err.stack.split("\n").slice(0, 5).join("\n") : JSON.stringify(err, null, 2))));
+                styledSystemReply(heTxt("errorOccurred6", time, commandName, removeHomeDir(err.stack ? err.stack.split("\n").slice(0, 5).join("\n") : JSON.stringify(err, null, 2))));
                 log.err("onEvent", `An error occurred when calling the command onEvent ${commandName}`, err);
               }
             }
