@@ -3,6 +3,7 @@ const fs = require("fs-extra");
 const path = require("path");
 const sharp = require("sharp");
 const { createCanvas, loadImage } = require("canvas");
+const { fetchAvatar } = require("../../utils/neonGif");
 
 const WIDTH = 1536;
 const HEIGHT = 810;
@@ -19,46 +20,9 @@ function fit(value, max = 42) {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
-function enhanceImageUrl(source) {
-  try {
-    const url = new URL(source);
-    url.searchParams.set("type", "large");
-    url.searchParams.set("width", "720");
-    url.searchParams.set("height", "720");
-    return url.toString();
-  } catch (_) {
-    return source;
-  }
-}
-
-async function getProfileImage(api, uid) {
+async function getProfileImage(api, uid, profileHint = {}) {
   if (!uid || String(uid).startsWith("Unknown")) return null;
-  try {
-    const result = await api.getUserInfo(String(uid));
-    const info = result?.[uid] || result?.[String(uid)] || {};
-    const candidates = [info.profileUrl, info.profilePic, info.thumbSrc]
-      .filter(Boolean)
-      .map(enhanceImageUrl);
-
-    for (const url of candidates) {
-      try {
-        const response = await axios.get(url, {
-          responseType: "arraybuffer",
-          timeout: 15000,
-          headers: { "User-Agent": "Mozilla/5.0" }
-        });
-        if (!response.data || response.data.length < 1000) continue;
-        // Normalize to a large square before Canvas draws it. This prevents a
-        // tiny thumbnail from being stretched directly onto the card.
-        const normalized = await sharp(Buffer.from(response.data))
-          .resize(720, 720, { fit: "cover", position: "attention", withoutEnlargement: false })
-          .png()
-          .toBuffer();
-        return await loadImage(normalized);
-      } catch (_) {}
-    }
-  } catch (_) {}
-  return null;
+  return fetchAvatar(api, String(uid), profileHint);
 }
 
 function roundedPath(ctx, x, y, width, height, radius) {
@@ -186,7 +150,7 @@ function drawCard(ctx, type, data, profile) {
 async function createHudCard(type, data, api) {
   await fs.ensureDir(CACHE_DIR);
   const canvas = createCanvas(WIDTH, HEIGHT);
-  const profile = await getProfileImage(api, data.uid);
+  const profile = await getProfileImage(api, data.uid, data.profile);
   drawCard(canvas.getContext("2d"), type, data, profile);
   const filePath = path.join(CACHE_DIR, `${type}_${String(data.uid).replace(/[^a-z0-9_-]/gi, "_")}_${Date.now()}.png`);
   await fs.writeFile(filePath, canvas.toBuffer("image/png"));

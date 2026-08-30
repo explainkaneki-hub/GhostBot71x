@@ -82,6 +82,76 @@ function drawNeonBackground(ctx, width, height, frame, colors = ["#ff2bd6", "#00
   ctx.shadowBlur = 0;
 }
 
+function enhanceImageUrl(source) {
+  try {
+    const url = new URL(source);
+    url.searchParams.set("type", "large");
+    url.searchParams.set("width", "1024");
+    url.searchParams.set("height", "1024");
+    return url.toString();
+  } catch (_) {
+    return source;
+  }
+}
+
+function imageCandidates(profile, uid) {
+  const values = [
+    profile?.profilePic,
+    profile?.profilePicture,
+    profile?.bigImageSrc,
+    profile?.largeProfilePicture,
+    profile?.thumbSrc,
+    profile?.avatar,
+    profile?.imageUrl,
+    profile?.profileUrl
+  ];
+  const urls = values
+    .filter(value => typeof value === "string" && /^https?:\/\//i.test(value))
+    .filter(value => /\/picture|fbcdn|profile[_-]?pic|avatar|image/i.test(value))
+    .map(enhanceImageUrl);
+  if (uid) urls.push(`https://graph.facebook.com/${encodeURIComponent(uid)}/picture?type=large&width=1024&height=1024`);
+  return [...new Set(urls)];
+}
+
+async function loadAvatar(profile, uid) {
+  for (const url of imageCandidates(profile, uid)) {
+    try {
+      const response = await axios.get(url, {
+        responseType: "arraybuffer",
+        timeout: 15000,
+        maxContentLength: 12 * 1024 * 1024,
+        headers: { "User-Agent": "Mozilla/5.0" }
+      });
+      const input = Buffer.from(response.data);
+      const metadata = await sharp(input).metadata();
+      if (!metadata.format || !metadata.width || !metadata.height || input.length < 1000) continue;
+      const normalized = await sharp(input)
+        .rotate()
+        .resize(1024, 1024, {
+          fit: "cover",
+          position: "attention",
+          kernel: sharp.kernel.lanczos3,
+          withoutEnlargement: false
+        })
+        .modulate({ saturation: 1.04 })
+        .sharpen({ sigma: 1.15, m1: 0.8, m2: 2 })
+        .png({ compressionLevel: 6 })
+        .toBuffer();
+      return await loadImage(normalized);
+    } catch (_) {}
+  }
+  return null;
+}
+
+async function fetchAvatar(api, uid, profileHint = {}) {
+  const profile = { ...profileHint };
+  try {
+    const result = await api.getUserInfo(uid);
+    Object.assign(profile, result?.[uid] || result?.[String(uid)] || result || {});
+  } catch (_) {}
+  return loadAvatar(profile, uid);
+}
+
 async function fetchProfile(api, usersData, uid) {
   const profile = {};
   try {
@@ -95,29 +165,7 @@ async function fetchProfile(api, usersData, uid) {
     }
   } catch (_) {}
 
-  let avatar = null;
-  const avatarUrl = profile.thumbSrc || profile.profilePic || profile.avatar || profile.imageUrl;
-  if (avatarUrl) {
-    try {
-      const response = await axios.get(avatarUrl, {
-        responseType: "arraybuffer",
-        timeout: 12000,
-        maxContentLength: 8 * 1024 * 1024
-      });
-      const normalized = await sharp(response.data)
-        .rotate()
-        .resize(900, 900, {
-          fit: "cover",
-          position: "attention",
-          kernel: sharp.kernel.lanczos3
-        })
-        .modulate({ saturation: 1.04 })
-        .sharpen({ sigma: 1.15, m1: 0.8, m2: 2 })
-        .png({ compressionLevel: 6 })
-        .toBuffer();
-      avatar = await loadImage(normalized);
-    } catch (_) {}
-  }
+  const avatar = await loadAvatar(profile, uid);
   return { ...profile, userID: uid, avatar };
 }
 
@@ -190,6 +238,7 @@ module.exports = {
   createNeonGif,
   drawAvatar,
   drawNeonBackground,
+  fetchAvatar,
   fetchProfile,
   fitText,
   roundRect

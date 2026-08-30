@@ -39,6 +39,7 @@ module.exports = {
       try {
         filePath = await createHudCard("welcome", {
           uid, name, groupName, memberNumber: String(memberNumber), members: String(members), time, date,
+          profile: participant,
           message: `Welcome ${name} — enjoy your stay in ${groupName}`
         }, api);
         await api.sendMessage({
