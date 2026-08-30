@@ -1,2 +1,3 @@
 - [E2EE runtime compatibility](e2ee-runtime.md) — ST-FCA encrypted messaging needs Node 22.19+.
 - [Reply wrapper safety](reply-wrapper-safety.md) — message styling/unsend wrappers must preserve callbacks and always restore after command errors.
+- [Public profile fields](public-profile-fields.md) — Facebook profile responses are partial; render optional metadata only when the API provides it.

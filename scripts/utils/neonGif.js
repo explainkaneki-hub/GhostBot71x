@@ -105,8 +105,15 @@ async function fetchProfile(api, usersData, uid) {
         maxContentLength: 8 * 1024 * 1024
       });
       const normalized = await sharp(response.data)
-        .resize(720, 720, { fit: "cover", position: "attention" })
-        .jpeg({ quality: 92 })
+        .rotate()
+        .resize(900, 900, {
+          fit: "cover",
+          position: "attention",
+          kernel: sharp.kernel.lanczos3
+        })
+        .modulate({ saturation: 1.04 })
+        .sharpen({ sigma: 1.15, m1: 0.8, m2: 2 })
+        .png({ compressionLevel: 6 })
         .toBuffer();
       avatar = await loadImage(normalized);
     } catch (_) {}
@@ -129,6 +136,8 @@ function drawAvatar(ctx, avatar, x, y, radius, accent = "#ff2bd6") {
   ctx.save();
   ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.clip();
   if (avatar) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     const scale = Math.max((radius * 2) / avatar.width, (radius * 2) / avatar.height);
     ctx.drawImage(
       avatar,

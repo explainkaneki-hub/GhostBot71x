@@ -1,7 +1,114 @@
 const fs = require("fs-extra");
 const path = require("path");
-const Jimp = require("jimp");
+const { createCanvas } = require("canvas");
 const { utils } = global;
+
+function rounded(ctx, x, y, width, height, radius, fill = true, stroke = false) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.arcTo(x + width, y, x + width, y + height, radius);
+        ctx.arcTo(x + width, y + height, x, y + height, radius);
+        ctx.arcTo(x, y + height, x, y, radius);
+        ctx.arcTo(x, y, x + width, y, radius);
+        ctx.closePath();
+        if (fill) ctx.fill();
+        if (stroke) ctx.stroke();
+}
+
+function drawPrefixCard(globalPfx, threadPfx) {
+        const width = 1200;
+        const height = 560;
+        const canvas = createCanvas(width, height);
+        const ctx = canvas.getContext("2d");
+        const colors = ["#00e5ff", "#ff2bd6", "#8b5cf6", "#ffb000", "#00ff9d"];
+
+        const background = ctx.createLinearGradient(0, 0, width, height);
+        background.addColorStop(0, "#050613");
+        background.addColorStop(0.48, "#16092b");
+        background.addColorStop(1, "#030b1d");
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, width, height);
+
+        for (let i = 0; i < 42; i++) {
+                const color = colors[i % colors.length];
+                ctx.fillStyle = `${color}55`;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 14;
+                ctx.fillRect((i * 97) % width, (i * 53) % height, 3, 3);
+        }
+        ctx.shadowBlur = 0;
+
+        const sweep = ctx.createLinearGradient(0, 0, width, 0);
+        sweep.addColorStop(0, "#00e5ff");
+        sweep.addColorStop(0.25, "#ff2bd6");
+        sweep.addColorStop(0.5, "#8b5cf6");
+        sweep.addColorStop(0.75, "#ffb000");
+        sweep.addColorStop(1, "#00ff9d");
+        ctx.fillStyle = sweep;
+        ctx.fillRect(0, 0, width, 9);
+        ctx.fillRect(0, height - 9, width, 9);
+
+        ctx.fillStyle = "rgba(5, 5, 24, 0.88)";
+        rounded(ctx, 46, 38, width - 92, height - 76, 30, true, false);
+        ctx.strokeStyle = "#ff2bd6";
+        ctx.shadowColor = "#00e5ff";
+        ctx.shadowBlur = 28;
+        ctx.lineWidth = 3;
+        rounded(ctx, 46, 38, width - 92, height - 76, 30, false, true);
+        ctx.shadowBlur = 0;
+
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#00e5ff";
+        ctx.font = "bold 19px monospace";
+        ctx.fillText("GHOST NET // COMMAND CONTROL", 88, 92);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#00ff9d";
+        ctx.font = "bold 16px monospace";
+        ctx.fillText("● ONLINE  •  PREFIX LINKED", width - 88, 92);
+
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "#ff2bd6";
+        ctx.shadowBlur = 20;
+        ctx.font = "bold 52px Arial";
+        ctx.fillText("PREFIX", width / 2, 168);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#bda7ff";
+        ctx.font = "17px monospace";
+        ctx.fillText("Your command gateway is ready", width / 2, 202);
+
+        const cards = [
+                { x: 88, color: "#00e5ff", label: "SYSTEM PREFIX", value: globalPfx },
+                { x: 420, color: "#ff2bd6", label: "THIS GROUP", value: threadPfx },
+                { x: 752, color: "#ffb000", label: "COMMAND FORMAT", value: `${threadPfx}help` }
+        ];
+        for (const card of cards) {
+                ctx.fillStyle = "rgba(16, 18, 44, 0.94)";
+                rounded(ctx, card.x, 250, 300, 142, 18, true, false);
+                ctx.strokeStyle = card.color;
+                ctx.shadowColor = card.color;
+                ctx.shadowBlur = 16;
+                ctx.lineWidth = 2;
+                rounded(ctx, card.x, 250, 300, 142, 18, false, true);
+                ctx.shadowBlur = 0;
+                ctx.textAlign = "left";
+                ctx.fillStyle = `${card.color}`;
+                ctx.font = "bold 14px monospace";
+                ctx.fillText(card.label, card.x + 24, 286);
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 32px monospace";
+                ctx.fillText(String(card.value).slice(0, 18), card.x + 24, 345);
+        }
+
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#d8d5ef";
+        ctx.font = "16px monospace";
+        ctx.fillText("Type the prefix before any command  •  Example:  " + threadPfx + "spy", width / 2, 455);
+        ctx.fillStyle = "#ff79dc";
+        ctx.font = "bold 16px monospace";
+        ctx.fillText("GHOST BOT  •  MULTI-COLOUR COMMAND NETWORK", width / 2, 500);
+        return canvas;
+}
 
 module.exports = {
         config: {
@@ -101,16 +208,11 @@ module.exports = {
                         const globalPfx = global.GoatBot.config.prefix;
                         const threadPfx = utils.getPrefix(event.threadID);
                         const cacheDir = path.join(__dirname, "cache");
-                        const imagePath = path.join(cacheDir, `prefix_${event.threadID}_${Date.now()}.jpg`);
+                        const safeThreadID = String(event.threadID).replace(/[^a-z0-9_-]/gi, "_");
+                        const imagePath = path.join(cacheDir, `prefix_${safeThreadID}_${Date.now()}.png`);
                         await fs.ensureDir(cacheDir);
-                        const image = new Jimp(1000, 420, 0x10152bff);
-                        const font = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE);
-                        const smallFont = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
-                        image.print(font, 65, 58, "GHOST NET PREFIX");
-                        image.print(smallFont, 65, 190, `System: ${globalPfx}`);
-                        image.print(smallFont, 65, 250, `This group: ${threadPfx}`);
-                        image.print(smallFont, 65, 335, "Use prefix + command");
-                        await image.writeAsync(imagePath);
+                        const image = drawPrefixCard(globalPfx, threadPfx);
+                        await fs.writeFile(imagePath, image.toBuffer("image/png"));
                         return message.reply(
                                 {
                                         body: `👻 Prefix: ${threadPfx}\nTry: ${threadPfx}help`,

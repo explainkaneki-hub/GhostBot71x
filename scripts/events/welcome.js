@@ -27,7 +27,7 @@ module.exports = {
     const time = now.toLocaleTimeString("en-US", { timeZone: "Asia/Dhaka", hour: "2-digit", minute: "2-digit" });
     const date = now.toLocaleDateString("en-GB", { timeZone: "Asia/Dhaka", weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 
-    for (const participant of participants) {
+    for (const [index, participant] of participants.entries()) {
       const uid = safe(participant?.userFbId, "Unknown UID");
       let name = safe(participant?.fullName, "");
       if (!name && usersData) {
