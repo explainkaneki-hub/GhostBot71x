@@ -35,10 +35,25 @@ function drawSpyFrame(ctx, frame, profile, stats) {
   roundRect(ctx, 42, 42, width - 84, height - 84, 26, false, true);
   ctx.shadowBlur = 0;
 
+  ctx.fillStyle = "rgba(10, 16, 40, 0.92)";
+  roundRect(ctx, 64, 182, 246, 492, 20, true, false);
+  ctx.strokeStyle = "rgba(0, 229, 255, 0.58)";
+  ctx.lineWidth = 2;
+  roundRect(ctx, 64, 182, 246, 492, 20, false, true);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+  roundRect(ctx, 78, 198, 218, 42, 12, true, false);
+  ctx.fillStyle = cyan;
+  ctx.font = "bold 13px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("TARGET // PROFILE INTEL", 187, 224);
+
   ctx.textAlign = "left";
   ctx.fillStyle = cyan;
   ctx.font = "bold 17px monospace";
   ctx.fillText("GHOST NET // CYBER INTEL SCANNER", 78, 92);
+  ctx.fillStyle = "#817baf";
+  ctx.font = "12px monospace";
+  ctx.fillText("PUBLIC DATA MATRIX  •  LIVE SCAN", 78, 116);
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 36px Arial";
   fitText(ctx, stats.name, 620, 36, "Arial");
@@ -55,6 +70,9 @@ function drawSpyFrame(ctx, frame, profile, stats) {
   ctx.fillStyle = "#a7a4c4";
   ctx.font = "13px monospace";
   ctx.fillText(`ID ${stats.uid}`, 175, 600);
+  ctx.fillStyle = "#8dffcf";
+  ctx.font = "bold 12px monospace";
+  ctx.fillText("● DATA STREAM ACTIVE", 187, 647);
 
   const cards = [
     ["BALANCE", `৳${number(stats.money)}`, pink],
@@ -71,11 +89,19 @@ function drawSpyFrame(ctx, frame, profile, stats) {
   cards.forEach(([label, value, color], index) => {
     const x = startX + (index % 2) * 310;
     const y = startY + Math.floor(index / 2) * 84;
-    ctx.fillStyle = "rgba(18, 15, 40, 0.92)";
+    const tile = ctx.createLinearGradient(x, y, x + 282, y + 66);
+    tile.addColorStop(0, "rgba(28, 25, 62, 0.96)");
+    tile.addColorStop(1, "rgba(10, 13, 32, 0.96)");
+    ctx.fillStyle = tile;
     roundRect(ctx, x, y, 282, 66, 12, true, false);
     ctx.strokeStyle = `${color}aa`;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 9;
     ctx.lineWidth = 1.5;
     roundRect(ctx, x, y, 282, 70, 12, false, true);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = color;
+    ctx.fillRect(x + 1, y + 1, 5, 64);
     ctx.textAlign = "left";
     ctx.fillStyle = "rgba(220,215,250,0.62)";
     ctx.font = "12px monospace";
@@ -86,7 +112,12 @@ function drawSpyFrame(ctx, frame, profile, stats) {
     ctx.fillText(value, x + 18, y + 50);
   });
 
-  ctx.fillStyle = "rgba(190,185,230,0.7)";
+  ctx.fillStyle = "rgba(14, 16, 39, 0.94)";
+  roundRect(ctx, 345, 540, 680, 143, 16, true, false);
+  ctx.strokeStyle = "rgba(139, 92, 246, 0.58)";
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, 345, 540, 680, 143, 16, false, true);
+  ctx.fillStyle = "rgba(190,185,230,0.76)";
   ctx.font = "14px monospace";
   ctx.textAlign = "left";
   ctx.fillText(`DOB  ${compact(stats.dob, 25)}    LOCATION  ${compact(stats.location, 25)}`, 355, 562);
@@ -98,7 +129,7 @@ function drawSpyFrame(ctx, frame, profile, stats) {
   ctx.fillStyle = pink;
   ctx.textAlign = "right";
   ctx.font = "bold 14px monospace";
-  ctx.fillText(`LIVE FRAME ${String(frame + 1).padStart(2, "0")}  •  PFP HD`, width - 78, height - 52);
+  ctx.fillText(`LIVE FRAME ${String(frame + 1).padStart(2, "0")}  •  PFP HD`, width - 78, height - 32);
 }
 
 module.exports = {

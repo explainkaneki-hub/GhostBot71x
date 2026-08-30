@@ -106,9 +106,10 @@ function imageCandidates(profile, uid) {
     profile?.profileUrl
   ];
   const urls = values
+    .map(value => typeof value === "string" ? value : value?.uri || value?.url || value?.source)
     .filter(value => typeof value === "string" && /^https?:\/\//i.test(value))
-    .filter(value => /\/picture|fbcdn|profile[_-]?pic|avatar|image/i.test(value))
-    .map(enhanceImageUrl);
+    .filter(value => /\/picture|fbcdn|fbsbx|scontent|profile[_-]?pic|avatar|image/i.test(value))
+    .flatMap(value => [enhanceImageUrl(value), value]);
   if (uid) urls.push(`https://graph.facebook.com/${encodeURIComponent(uid)}/picture?type=large&width=1024&height=1024`);
   return [...new Set(urls)];
 }

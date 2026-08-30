@@ -1,8 +1,6 @@
-const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const sharp = require("sharp");
-const { createCanvas, loadImage } = require("canvas");
+const { createCanvas } = require("canvas");
 const { fetchAvatar } = require("../../utils/neonGif");
 
 const WIDTH = 1536;
