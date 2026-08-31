@@ -7,6 +7,16 @@ const sharp = require("sharp");
 
 const CACHE_DIR = path.join(process.cwd(), "scripts", "cmds", "cache");
 const profilePageUrlCache = new Map();
+const pfpDiagnosticsEnabled = process.env.GHOST_BOT_PFP_DEBUG === "1";
+
+function pfpDiagnostic(event, details = {}) {
+  if (!pfpDiagnosticsEnabled) return;
+  const safe = Object.entries(details)
+    .filter(([key]) => ["candidateCount", "pageCandidateCount", "status", "domain"].includes(key))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(" ");
+  console.log(`[PFP] ${event}${safe ? ` ${safe}` : ""}`);
+}
 
 function roundRect(ctx, x, y, width, height, radius, fill = true, stroke = false) {
   ctx.beginPath();
@@ -169,7 +179,10 @@ async function fetchProfilePageImageUrls(profile, uid, cookie) {
   const profileUrl = sources
     .map(source => source.profileUrl || source.profileURL)
     .find(value => typeof value === "string" && /^https?:\/\/(?:www\.)?facebook\.com\//i.test(value));
-  if (!profileUrl) return [];
+  if (!profileUrl) {
+    pfpDiagnostic("profile-page-skip", { status: "no-profile-url" });
+    return [];
+  }
 
   const cacheKey = `${uid}:${profileUrl}`;
   const cached = profilePageUrlCache.get(cacheKey);
@@ -187,9 +200,15 @@ async function fetchProfilePageImageUrls(profile, uid, cookie) {
       }
     });
     const urls = extractProfilePageImageUrls(response.data);
+    pfpDiagnostic("profile-page", {
+      pageCandidateCount: urls.length,
+      status: response.status,
+      domain: new URL(profileUrl).hostname
+    });
     profilePageUrlCache.set(cacheKey, { urls, expiresAt: Date.now() + 10 * 60 * 1000 });
     return urls;
   } catch (_) {
+    pfpDiagnostic("profile-page", { pageCandidateCount: 0, status: "request-failed" });
     profilePageUrlCache.set(cacheKey, { urls: [], expiresAt: Date.now() + 60 * 1000 });
     return [];
   }
@@ -209,7 +228,9 @@ function getSessionCookie(api) {
 }
 
 async function loadAvatar(profile, uid, requestOptions = {}, preferredUrls = []) {
-  for (const url of [...new Set([...preferredUrls, ...imageCandidates(profile, uid)])]) {
+  const candidates = [...new Set([...preferredUrls, ...imageCandidates(profile, uid)])];
+  pfpDiagnostic("avatar-candidates", { candidateCount: candidates.length });
+  for (const url of candidates) {
     try {
       const response = await axios.get(url, {
         responseType: "arraybuffer",
@@ -242,9 +263,14 @@ async function loadAvatar(profile, uid, requestOptions = {}, preferredUrls = [])
         .sharpen({ sigma: 1.15, m1: 0.8, m2: 2 })
         .png({ compressionLevel: 6 })
         .toBuffer();
+      pfpDiagnostic("avatar", {
+        status: "success",
+        domain: new URL(url).hostname
+      });
       return await loadImage(normalized);
     } catch (_) {}
   }
+  pfpDiagnostic("avatar", { status: "not-found" });
   return null;
 }
 

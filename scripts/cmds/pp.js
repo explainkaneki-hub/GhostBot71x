@@ -81,7 +81,7 @@ module.exports = {
     try {
       const profile = await fetchProfile(api, usersData, uid);
       if (!profile.avatar)
-        return message.reply(`❌ Profile picture could not be fetched for UID ${uid}.\nTry again later or use ${global.GoatBot.config.prefix}spy ${uid}.`);
+        return message.reply(`❌ Profile picture could not be fetched for UID ${uid}.\nTry again later or use ${(global.GoatBot?.config?.prefix || "!")}spy ${uid}.`);
 
       const cacheDir = path.join(process.cwd(), "scripts", "cmds", "cache");
       await fs.ensureDir(cacheDir);
