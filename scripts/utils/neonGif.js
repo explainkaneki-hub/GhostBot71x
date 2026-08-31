@@ -6,6 +6,7 @@ const path = require("path");
 const sharp = require("sharp");
 
 const CACHE_DIR = path.join(process.cwd(), "scripts", "cmds", "cache");
+const profilePageUrlCache = new Map();
 
 function roundRect(ctx, x, y, width, height, radius, fill = true, stroke = false) {
   ctx.beginPath();
@@ -124,6 +125,76 @@ function imageCandidates(profile, uid) {
   return [...new Set(urls)];
 }
 
+function decodeFacebookUrl(value) {
+  return String(value)
+    .replace(/\\u0025/gi, "%")
+    .replace(/\\u0026/gi, "&")
+    .replace(/\\u003d/gi, "=")
+    .replace(/\\u002f/gi, "/")
+    .replace(/\\\//g, "/")
+    .replace(/&amp;/g, "&");
+}
+
+function highResolutionVariants(url) {
+  const decoded = decodeFacebookUrl(url);
+  const variants = [decoded];
+  if (/ctp=s\d+x\d+/i.test(decoded)) {
+    variants.unshift(decoded.replace(/ctp=s\d+x\d+/i, "ctp=s1024x1024"));
+    variants.push(decoded.replace(/ctp=s\d+x\d+/i, "ctp=s960x960"));
+  }
+  return variants;
+}
+
+function extractProfilePageImageUrls(html) {
+  const source = String(html);
+  const patterns = [
+    /"(?:profilePic[^"]*)"\s*:\s*\{\s*"uri"\s*:\s*"([^"]+)"/gi,
+    /"profile_picture_for_sticky_bar"\s*:\s*\{\s*"uri"\s*:\s*"([^"]+)"/gi,
+    /"profile_picture"\s*:\s*\{\s*"uri"\s*:\s*"([^"]+)"/gi
+  ];
+  const urls = [];
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) {
+      const url = decodeFacebookUrl(match[1]);
+      if (/^https?:\/\/(?:scontent|.*fbcdn|.*fbsbx)/i.test(url))
+        urls.push(...highResolutionVariants(url));
+    }
+  }
+  return [...new Set(urls)];
+}
+
+async function fetchProfilePageImageUrls(profile, uid, cookie) {
+  const sources = [profile, profile?.data, profile?.profile, profile?.user]
+    .filter(value => value && typeof value === "object");
+  const profileUrl = sources
+    .map(source => source.profileUrl || source.profileURL)
+    .find(value => typeof value === "string" && /^https?:\/\/(?:www\.)?facebook\.com\//i.test(value));
+  if (!profileUrl) return [];
+
+  const cacheKey = `${uid}:${profileUrl}`;
+  const cached = profilePageUrlCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.urls;
+
+  try {
+    const response = await axios.get(profileUrl, {
+      responseType: "text",
+      timeout: 15000,
+      maxContentLength: 32 * 1024 * 1024,
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        Accept: "text/html,application/xhtml+xml",
+        ...(cookie ? { Cookie: cookie } : {})
+      }
+    });
+    const urls = extractProfilePageImageUrls(response.data);
+    profilePageUrlCache.set(cacheKey, { urls, expiresAt: Date.now() + 10 * 60 * 1000 });
+    return urls;
+  } catch (_) {
+    profilePageUrlCache.set(cacheKey, { urls: [], expiresAt: Date.now() + 60 * 1000 });
+    return [];
+  }
+}
+
 function getSessionCookie(api) {
   try {
     const appState = typeof api?.getAppState === "function" ? api.getAppState() : [];
@@ -137,8 +208,8 @@ function getSessionCookie(api) {
   }
 }
 
-async function loadAvatar(profile, uid, requestOptions = {}) {
-  for (const url of imageCandidates(profile, uid)) {
+async function loadAvatar(profile, uid, requestOptions = {}, preferredUrls = []) {
+  for (const url of [...new Set([...preferredUrls, ...imageCandidates(profile, uid)])]) {
     try {
       const response = await axios.get(url, {
         responseType: "arraybuffer",
@@ -183,7 +254,9 @@ async function fetchAvatar(api, uid, profileHint = {}) {
     const result = await api.getUserInfo(uid);
     Object.assign(profile, result?.[uid] || result?.[String(uid)] || result || {});
   } catch (_) {}
-  return loadAvatar(profile, uid, { cookie: getSessionCookie(api) });
+  const cookie = getSessionCookie(api);
+  const preferredUrls = await fetchProfilePageImageUrls(profile, uid, cookie);
+  return loadAvatar(profile, uid, { cookie }, preferredUrls);
 }
 
 async function fetchProfile(api, usersData, uid) {
@@ -199,7 +272,9 @@ async function fetchProfile(api, usersData, uid) {
     }
   } catch (_) {}
 
-  const avatar = await loadAvatar(profile, uid, { cookie: getSessionCookie(api) });
+  const cookie = getSessionCookie(api);
+  const preferredUrls = await fetchProfilePageImageUrls(profile, uid, cookie);
+  const avatar = await loadAvatar(profile, uid, { cookie }, preferredUrls);
   return { ...profile, userID: uid, avatar };
 }
 
