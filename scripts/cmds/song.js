@@ -1,65 +1,56 @@
-const fs = require("fs-extra");
-const path = require("path");
-const ytSearch = require("yt-search");
-const ytdl = require("@distube/ytdl-core");
-const ffmpeg = require("fluent-ffmpeg");
+const axios = require("axios");
+
+const mahmud = async () => {
+  const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json");
+  return base.data.mahmud;
+};
 
 module.exports = {
-  config: {
-    name: "song",
-    aliases: ["music", "sing"],
-    version: "1.0",
-    author: "Rakib Islam",
-    countDown: 10,
-    role: 0,
-    category: "media",
-    shortDescription: "YouTube song downloader",
-    guide: { en: "{pn} <song name or YouTube link>" }
-  },
+    config: {
+        name: "song",
+        version: "1.7",
+        author: "MahMUD", 
+        countDown: 10,
+        role: 0,
+        category: "music",
+        guide: "{p}song mood"
+    },
 
-  onStart: async function ({ args, event, message, api }) {
-    const query = args.join(" ").trim();
-    if (!query) return message.reply("🎵 Song name বা YouTube link দিন।");
-    const cacheDir = path.join(__dirname, "cache");
-    const filePath = path.join(cacheDir, `song_${event.senderID}_${Date.now()}.mp3`);
-    let video;
+    onStart: async function ({ api, event, args, message }) {
+        if (args.length === 0) {
+            return message.reply("❌ | Please provide a sing name\n\nExample: sing moye moye");
+        }
 
-    try {
-      await fs.ensureDir(cacheDir);
-      video = ytdl.validateURL(query)
-        ? { url: query, title: "YouTube song", timestamp: "" }
-        : (await ytSearch(query)).videos[0];
-      if (!video?.url) throw new Error("Song পাওয়া যায়নি");
-      if (video.seconds && video.seconds > 600) {
-        return message.reply("❌ ১০ মিনিটের বেশি song download করা যাবে না।");
-      }
+        try {
+            const query = encodeURIComponent(args.join(" "));
+            const apiUrl = `${await mahmud()}/api/sing?q=${query}`;
 
-      api.setMessageReaction("⏳", event.messageID, () => {}, true);
-      await message.reply(`🎧 Downloading: ${video.title || "song"}`);
-      await new Promise((resolve, reject) => {
-        const stream = ytdl(video.url, {
-          quality: "highestaudio",
-          filter: "audioonly",
-          highWaterMark: 1 << 25
-        });
-        ffmpeg(stream)
-          .audioCodec("libmp3lame")
-          .audioBitrate(128)
-          .format("mp3")
-          .on("end", resolve)
-          .on("error", reject)
-          .save(filePath);
-      });
+            const response = await axios.get(apiUrl, {
+                responseType: "stream",
+                headers: { "author": module.exports.config.author }
+            });
 
-      api.setMessageReaction("✅", event.messageID, () => {}, true);
-      return message.reply(
-        { body: `🎵 ${video.title || "Song"}\n✅ Download complete`, attachment: fs.createReadStream(filePath) },
-        () => fs.remove(filePath).catch(() => {})
-      );
-    } catch (error) {
-      api.setMessageReaction("❌", event.messageID, () => {}, true);
-      await fs.remove(filePath).catch(() => {});
-      return message.reply(`❌ Song download failed: ${error.message || "YouTube blocked the request"}`);
+            console.log("Response:", response);
+
+            if (response.data.error) {
+                return message.reply(`${response.data.error}`);
+            }
+
+            message.reply({
+                body: `✅ | 𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐬𝐨𝐧𝐠: ${args.join(" ")}`,
+                attachment: response.data
+            });
+
+        } catch (error) {
+            console.error("Error:", error.message);
+
+            if (error.response) {
+                console.error("Response error data:", error.response.data);
+                console.error("Response status:", error.response.status);
+                return message.reply(`${error.response.data.error || error.message}`);
+            }
+
+            message.reply("error🥺contact admin");
+        }
     }
-  }
 };
